@@ -25,11 +25,21 @@ typedef struct {
 typedef struct {
     Client clients[MAX_CLIENTS];
     int client_count;
-    sem_t semaphore;  // On garde uniquement ce sémaphore pour la gestion des clients
+    sem_t semaphore; 
 } SharedData;
 
 SharedData *shared_data;
 int sockfd;
+
+int pseudo_exists(const char* pseudo) {
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (shared_data->clients[i].socket != -1 && 
+            strcmp(shared_data->clients[i].pseudo, pseudo) == 0) {
+            return 1;
+        }
+    }
+    return 0;
+}
 
 void handle_client(int client_index) {
     char buffer[BUFFER_SIZE];
@@ -197,6 +207,23 @@ int main(int argc, char** argv) {
             close(newsockfd);
             continue;
         }
+
+        // Vérifier si le pseudo existe déjà
+        sem_wait(&shared_data->semaphore);
+        int pseudo_taken = pseudo_exists(buffer);
+        sem_post(&shared_data->semaphore);
+
+        if (pseudo_taken) {
+            printf("Pseudo '%s' already exists, rejecting connection\n", buffer);
+            const char *error_msg = "pseudo_exists";
+            send(newsockfd, error_msg, strlen(error_msg), MSG_NOSIGNAL);
+            close(newsockfd);
+            continue;
+        }
+
+        // Accepter la connexion si le pseudo est unique
+        const char *success_msg = "connected";
+        send(newsockfd, success_msg, strlen(success_msg), MSG_NOSIGNAL);
 
         // Trouver un slot libre
         int client_index = -1;

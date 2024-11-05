@@ -20,6 +20,40 @@ void print_menu() {
     printf("\n");
 }
 
+int get_valid_pseudo(int sockfd, char *buffer) {
+    while (1) {
+        printf("Enter your pseudo (max 255 characters): ");
+        memset(buffer, 0, BUFFER_SIZE);
+        fgets(buffer, BUFFER_SIZE, stdin);
+        buffer[strcspn(buffer, "\n")] = '\0';  // Remove newline character
+
+        // Send pseudo to server
+        if (write(sockfd, buffer, strlen(buffer)) < 0) {
+            perror("Write error");
+            return 0;
+        }
+
+        // Wait for server response
+        memset(buffer, 0, BUFFER_SIZE);
+        if (read(sockfd, buffer, BUFFER_SIZE) < 0) {
+            perror("Read error");
+            return 0;
+        }
+
+        // Check server response
+        if (strcmp(buffer, "connected") == 0) {
+            printf("Successfully connected to server!\n");
+            return 1;
+        } else if (strcmp(buffer, "pseudo_exists") == 0) {
+            printf("This pseudo is already taken. Please choose another one.\n");
+            continue;
+        } else {
+            printf("Unexpected server response. Please try again.\n");
+            return 0;
+        }
+    }
+}
+
 int main(int argc, char** argv) { 
     int sockfd;
     struct sockaddr_in serv_addr;
@@ -51,14 +85,11 @@ int main(int argc, char** argv) {
         exit(EXIT_FAILURE);
     }
 
-    // Prompt for pseudo
-    printf("Enter your pseudo (max 255 characters): ");
-    memset(buffer, 0, BUFFER_SIZE);
-    fgets(buffer, BUFFER_SIZE, stdin);
-    buffer[strcspn(buffer, "\n")] = '\0';  // Remove newline character
-
-    // Send pseudo to server
-    write(sockfd, buffer, strlen(buffer));
+    // Get valid pseudo
+    if (!get_valid_pseudo(sockfd, buffer)) {
+        close(sockfd);
+        exit(EXIT_FAILURE);
+    }
 
     // Message loop
     while (1) {
@@ -72,6 +103,7 @@ int main(int argc, char** argv) {
             continue;
         }
         getchar(); // Consume newline left by scanf
+        
         switch (choice) {
             case 1:
                 memset(buffer, 0, BUFFER_SIZE);
@@ -107,12 +139,13 @@ int main(int argc, char** argv) {
                 }
 
                 printf("%s", buffer);
-                
                 break;
+
             case 3:
                 printf("Exiting...\n");
                 close(sockfd);
                 exit(EXIT_SUCCESS);
+
             case 4:
                 printf("\nBio Management:\n");
                 printf("1. Set your bio\n");
@@ -174,16 +207,17 @@ int main(int argc, char** argv) {
                     printf("\n%s's bio:\n%s\n", target_pseudo, buffer);
                 }
                 break;
+
             case 5:
-                //TODO: Implementer le fait de defier un joueur (pour l'instant on ne lance pas le jeu) -> juste envoyer un message au joueur
+                //TODO: Implementer le fait de defier un joueur
+                break;
+
             default:
                 printf("Invalid choice\n");
                 continue;
         }
-
     }
 
-    // Close the socket
     close(sockfd);
     return 0;
 }
