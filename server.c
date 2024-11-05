@@ -9,6 +9,7 @@
 #include <signal.h>
 #include <sys/ipc.h>
 #include <sys/shm.h>
+#include <stdbool.h>
 #include <semaphore.h>
 
 #define MAX_CLIENTS 10
@@ -20,6 +21,9 @@ typedef struct {
     char pseudo[BUFFER_SIZE];
     char bio[MAX_BIO_LENGTH];
     int has_bio;
+    int in_game;                 
+    char challenger[BUFFER_SIZE]; 
+    int has_pending_challenge; 
 } Client;
 
 typedef struct {
@@ -41,6 +45,100 @@ int pseudo_exists(const char* pseudo) {
     return 0;
 }
 
+void send_challenge_response(int socket, const char* response) {
+    char buffer[BUFFER_SIZE];
+    snprintf(buffer, BUFFER_SIZE, "challenge_response:%s", response);
+    send(socket, buffer, strlen(buffer), MSG_NOSIGNAL);
+}
+
+int find_client_by_pseudo(const char* pseudo) {
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        if (shared_data->clients[i].socket != -1 && 
+            strcmp(shared_data->clients[i].pseudo, pseudo) == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+/*void handle_challenge_request(SharedData *shared_data, int challenger_index, char *target_pseudo) {
+    sem_wait(&shared_data->semaphore);
+    
+    int target_index = find_client_by_pseudo(target_pseudo);
+    printf("Target index pseudo found %s\n", shared_data->clients[target_index].pseudo);
+    printf("Target index %d\n", target_index);
+    printf("Challenger index %d\n", challenger_index);
+    Client *challenger = &shared_data->clients[challenger_index];
+    
+    if (target_index == -1) {
+        send_challenge_response(challenger->socket, "not_found");
+    }
+    else if (target_index == challenger_index) {
+        send_challenge_response(challenger->socket, "self_challenge");
+    }
+    else {
+        Client *target = &shared_data->clients[target_index];
+        
+        if (target->in_game) {
+            send_challenge_response(challenger->socket, "in_game");
+        }
+        else if (target->has_pending_challenge) {
+            send_challenge_response(challenger->socket, "already_challenged");
+        }
+        else {
+            // Envoyer le défi au joueur cible
+            char challenge_msg[BUFFER_SIZE];
+            snprintf(challenge_msg, BUFFER_SIZE, "challenge_request:%s\n", challenger->pseudo);
+            send(target->socket, challenge_msg, strlen(challenge_msg), MSG_NOSIGNAL);
+            
+            // Marquer le joueur cible comme ayant un défi en attente
+            target->has_pending_challenge = 1;
+            strncpy(target->challenger, challenger->pseudo, BUFFER_SIZE);
+            
+            send_challenge_response(challenger->socket, "sent");
+        }
+    }
+    
+    sem_post(&shared_data->semaphore);
+}
+
+void handle_challenge_response(SharedData *shared_data, int responder_index, bool accepted) {
+    sem_wait(&shared_data->semaphore);
+    
+    Client *responder = &shared_data->clients[responder_index];
+    
+    if (responder->has_pending_challenge) {
+        int challenger_index = find_client_by_pseudo(responder->challenger);
+        
+        if (challenger_index != -1) {
+            Client *challenger = &shared_data->clients[challenger_index];
+            char response_msg[BUFFER_SIZE];
+            
+            if (accepted) {
+                snprintf(response_msg, BUFFER_SIZE, "challenge_accepted:%s\n", responder->pseudo);
+                send(challenger->socket, response_msg, strlen(response_msg), MSG_NOSIGNAL);
+                
+                // Démarrer la partie
+                responder->in_game = 1;
+                challenger->in_game = 1;
+                
+                // Envoyer les infos de début de partie aux deux joueurs
+                // ... code pour initialiser la partie ...
+            }
+            else {
+                snprintf(response_msg, BUFFER_SIZE, "challenge_refused:%s\n", responder->pseudo);
+                send(challenger->socket, response_msg, strlen(response_msg), MSG_NOSIGNAL);
+            }
+        }
+        
+        // Réinitialiser l'état du défi
+        responder->has_pending_challenge = 0;
+        memset(responder->challenger, 0, BUFFER_SIZE);
+    }
+    
+    sem_post(&shared_data->semaphore);
+}*/
+
 void handle_client(int client_index) {
     char buffer[BUFFER_SIZE];
     char message[BUFFER_SIZE + 50];
@@ -57,6 +155,8 @@ void handle_client(int client_index) {
             sem_post(&shared_data->semaphore);
             break;
         }
+
+        buffer[n]='\0';
         
         snprintf(message, sizeof(message), "%s: %s", shared_data->clients[client_index].pseudo, buffer);
         printf("%s\n", message);
@@ -112,6 +212,20 @@ void handle_client(int client_index) {
                 break;
             }
         }
+
+        /*else if (strncmp(buffer, "challenge:", 10) == 0) {
+            char target_pseudo[BUFFER_SIZE];
+            strncpy(target_pseudo, buffer + 10, BUFFER_SIZE - 1);
+            target_pseudo[strcspn(target_pseudo, "\n")] = 0;
+            printf("Challenge request from %s to %s\n", shared_data->clients[client_index].pseudo, target_pseudo);
+            handle_challenge_request(shared_data, client_index, target_pseudo);
+        }
+        else if (strncmp(buffer, "accept_challenge:", 16) == 0) {
+            handle_challenge_response(shared_data, client_index, true);
+        }
+        else if (strncmp(buffer, "refuse_challenge:", 16) == 0) {
+            handle_challenge_response(shared_data, client_index, false);
+        }*/
     }
 }
 
