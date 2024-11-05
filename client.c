@@ -8,12 +8,16 @@
 #include <unistd.h>
 
 #define BUFFER_SIZE 256
+#define MAX_BIO_LENGTH 1000
 
 void print_menu() {
     printf("Menu:\n");
     printf("1. Send a message\n");
     printf("2. List connected clients\n");
     printf("3. Exit\n");
+    printf("4. Biography\n");
+    printf("5. Awale vs Connected Clients\n");
+    printf("\n");
 }
 
 int main(int argc, char** argv) { 
@@ -84,7 +88,7 @@ int main(int argc, char** argv) {
 
             case 2:
                 memset(buffer, 0, BUFFER_SIZE);
-                strcpy(buffer, "liste");
+                strcpy(buffer, "liste:");
 
                 // Send list command to the server
                 if (write(sockfd, buffer, strlen(buffer)) < 0) {
@@ -109,6 +113,69 @@ int main(int argc, char** argv) {
                 printf("Exiting...\n");
                 close(sockfd);
                 exit(EXIT_SUCCESS);
+            case 4:
+                printf("\nBio Management:\n");
+                printf("1. Set your bio\n");
+                printf("2. View someone's bio\n");
+                printf("Choose option: ");
+                int bio_choice;
+                scanf("%d", &bio_choice);
+                getchar(); // Consume newline
+
+                if (bio_choice == 1) {
+                    memset(buffer, 0, BUFFER_SIZE);
+                    strcpy(buffer, "setbio:");
+                    printf("Enter your bio (up to 10 lines, end with an empty line):\n");
+                    char bio[MAX_BIO_LENGTH] = {0};
+                    char line[100];
+                    int line_count = 0;
+                    
+                    while (line_count < 10) {
+                        if (fgets(line, sizeof(line), stdin) == NULL) {
+                            break;
+                        }
+                        if (line[0] == '\n') {
+                            break;
+                        }
+                        strcat(bio, line);
+                        line_count++;
+                    }
+                    
+                    strcat(buffer, bio);
+                    
+                    if (write(sockfd, buffer, strlen(buffer)) < 0) {
+                        perror("Write error");
+                        close(sockfd);
+                        exit(EXIT_FAILURE);
+                    }
+                } 
+                else if (bio_choice == 2) {
+                    printf("Enter pseudo to view bio: ");
+                    char target_pseudo[BUFFER_SIZE];
+                    fgets(target_pseudo, BUFFER_SIZE, stdin);
+                    target_pseudo[strcspn(target_pseudo, "\n")] = '\0';
+                    
+                    memset(buffer, 0, BUFFER_SIZE);
+                    snprintf(buffer, BUFFER_SIZE, "getbio:%s", target_pseudo);
+                    
+                    if (write(sockfd, buffer, strlen(buffer)) < 0) {
+                        perror("Write error");
+                        close(sockfd);
+                        exit(EXIT_FAILURE);
+                    }
+                    
+                    // Receive and display bio
+                    memset(buffer, 0, BUFFER_SIZE);
+                    if (read(sockfd, buffer, BUFFER_SIZE) < 0) {
+                        perror("Read error");
+                        close(sockfd);
+                        exit(EXIT_FAILURE);
+                    }
+                    printf("\n%s's bio:\n%s\n", target_pseudo, buffer);
+                }
+                break;
+            case 5:
+                //TODO: Implementer le fait de defier un joueur (pour l'instant on ne lance pas le jeu) -> juste envoyer un message au joueur
             default:
                 printf("Invalid choice\n");
                 continue;

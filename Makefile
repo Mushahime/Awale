@@ -1,6 +1,6 @@
 # Compiler and flags
 CC = gcc
-CFLAGS = -Wall -Wextra -Wno-format-truncation -g
+CFLAGS = -Wall -Wextra -Wno-format-truncation -g -pthread
 
 # Target executable names
 TARGET_AWALE = awale

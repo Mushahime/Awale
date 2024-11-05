@@ -13,22 +13,24 @@
 
 #define MAX_CLIENTS 10
 #define BUFFER_SIZE 256
+#define MAX_BIO_LENGTH 1000
 
 typedef struct {
     int socket;
     char pseudo[BUFFER_SIZE];
+    char bio[MAX_BIO_LENGTH];
+    int has_bio;
 } Client;
 
 typedef struct {
-    Client clients[MAX_CLIENTS]; // Liste des clients
-    int client_count; // Compteur de clients
-    sem_t semaphore; // Sémaphore pour la synchronisation
+    Client clients[MAX_CLIENTS];
+    int client_count;
+    sem_t semaphore;  // On garde uniquement ce sémaphore pour la gestion des clients
 } SharedData;
 
-SharedData *shared_data; // Pointeur vers la mémoire partagée
-int sockfd; // Déclaré globalement pour qu'il soit accessible dans le gestionnaire de signal
+SharedData *shared_data;
+int sockfd;
 
-// Fonction pour gérer la communication avec un client
 void handle_client(int client_index) {
     char buffer[BUFFER_SIZE];
     char message[BUFFER_SIZE + 50];
@@ -38,49 +40,84 @@ void handle_client(int client_index) {
         int n = read(shared_data->clients[client_index].socket, buffer, BUFFER_SIZE);
         if (n <= 0) {
             printf("Client disconnected: %s\n", shared_data->clients[client_index].pseudo);
+            
+            sem_wait(&shared_data->semaphore);
             close(shared_data->clients[client_index].socket);
-            sem_wait(&shared_data->semaphore); // Prendre le sémaphore
-            shared_data->clients[client_index].socket = -1; // Marquer le client comme déconnecté
-            sem_post(&shared_data->semaphore); // Libérer le sémaphore
+            shared_data->clients[client_index].socket = -1;
+            sem_post(&shared_data->semaphore);
             break;
         }
         
-        // Afficher le message avec le pseudo du client
         snprintf(message, sizeof(message), "%s: %s", shared_data->clients[client_index].pseudo, buffer);
-        printf("%s", message);
+        printf("%s\n", message);
 
-        // Vérifier si la commande est "liste"
-        if (strncmp(buffer, "liste", 5) == 0) {
-            char pseudo_list[BUFFER_SIZE * MAX_CLIENTS] = {0}; // Initialiser à vide
-
-            sem_wait(&shared_data->semaphore); // Prendre le sémaphore
+        if (strncmp(buffer, "liste:", 6) == 0) {
+            char pseudo_list[BUFFER_SIZE * MAX_CLIENTS] = {0};
+            
+            sem_wait(&shared_data->semaphore);
             for (int i = 0; i < MAX_CLIENTS; i++) {
                 if (shared_data->clients[i].socket != -1) {
-                    // Ajouter le pseudo et une nouvelle ligne à la liste
                     strncat(pseudo_list, shared_data->clients[i].pseudo, BUFFER_SIZE - strlen(pseudo_list) - 1);
-                    strncat(pseudo_list, " ", BUFFER_SIZE - strlen(pseudo_list) - 1); // Ajouter une nouvelle ligne pour la lisibilité
+                    strncat(pseudo_list, "\n", BUFFER_SIZE - strlen(pseudo_list) - 1);
                 }
             }
-            sem_post(&shared_data->semaphore); // Libérer le sémaphore
-
-            strncat(pseudo_list, "\n\n", BUFFER_SIZE - strlen(pseudo_list) - 1); // Ajouter une nouvelle ligne à la fin
-
-            printf("Connected clients:\n%s", pseudo_list);
-            write(shared_data->clients[client_index].socket, pseudo_list, strlen(pseudo_list)); // Envoyer la liste au client
+            sem_post(&shared_data->semaphore);
+            
+            // S'assurer que le message est correctement terminé
+            strncat(pseudo_list, "\n", BUFFER_SIZE - strlen(pseudo_list) - 1);
+            
+            // Utiliser send avec MSG_NOSIGNAL pour éviter les problèmes de SIGPIPE
+            if (send(shared_data->clients[client_index].socket, pseudo_list, strlen(pseudo_list), MSG_NOSIGNAL) < 0) {
+                perror("Send error");
+                break;
+            }
+        }
+        else if (strncmp(buffer, "setbio:", 7) == 0) {
+            sem_wait(&shared_data->semaphore);
+            strncpy(shared_data->clients[client_index].bio, buffer + 7, MAX_BIO_LENGTH - 1);
+            shared_data->clients[client_index].has_bio = 1;
+            sem_post(&shared_data->semaphore);
+            
+            printf("Bio updated for %s\n", shared_data->clients[client_index].pseudo);
+        }
+        else if (strncmp(buffer, "getbio:", 7) == 0) {
+            char target_pseudo[BUFFER_SIZE];
+            strncpy(target_pseudo, buffer + 7, BUFFER_SIZE - 1);
+            
+            char response[MAX_BIO_LENGTH] = "Bio not found.";
+            
+            sem_wait(&shared_data->semaphore);
+            for (int i = 0; i < MAX_CLIENTS; i++) {
+                if (shared_data->clients[i].socket != -1 && 
+                    strcmp(shared_data->clients[i].pseudo, target_pseudo) == 0 &&
+                    shared_data->clients[i].has_bio) {
+                    strncpy(response, shared_data->clients[i].bio, MAX_BIO_LENGTH - 1);
+                    break;
+                }
+            }
+            sem_post(&shared_data->semaphore);
+            
+            if (send(shared_data->clients[client_index].socket, response, strlen(response), MSG_NOSIGNAL) < 0) {
+                perror("Send error");
+                break;
+            }
         }
     }
 }
 
-// Fonction de nettoyage pour fermer tous les sockets
 void cleanup() {
+    sem_wait(&shared_data->semaphore);
     for (int i = 0; i < MAX_CLIENTS; i++) {
         if (shared_data->clients[i].socket != -1) {
             close(shared_data->clients[i].socket);
         }
     }
-    // Détacher et supprimer la mémoire partagée
+    sem_post(&shared_data->semaphore);
+    
+    sem_destroy(&shared_data->semaphore);
     shmdt(shared_data);
-    shmctl(IPC_PRIVATE, IPC_RMID, NULL); // Supprimer le segment de mémoire partagée
+    shmctl(IPC_PRIVATE, IPC_RMID, NULL);
+    close(sockfd);
     exit(0);
 }
 
@@ -96,85 +133,102 @@ int main(int argc, char** argv) {
 
     printf("Server starting...\n");
 
-    // Crée le socket
     sockfd = socket(AF_INET, SOCK_STREAM, 0);
     if (sockfd < 0) {
         perror("Socket error");
         exit(EXIT_FAILURE);
     }
 
-    // Initialise l'adresse du serveur
+    // Enable address reuse
+    int opt = 1;
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) < 0) {
+        perror("setsockopt error");
+        exit(EXIT_FAILURE);
+    }
+
     memset(&serv_addr, 0, sizeof(serv_addr));
     serv_addr.sin_family = AF_INET;
     serv_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     serv_addr.sin_port = htons(atoi(argv[1]));
 
-    // Lie le socket
     if (bind(sockfd, (struct sockaddr*)&serv_addr, sizeof(serv_addr)) < 0) {
         perror("Bind error");
         close(sockfd);
         exit(EXIT_FAILURE);
     }
 
-    // Écoute les connexions entrantes
     listen(sockfd, MAX_CLIENTS);
     printf("Waiting for clients...\n");
 
-    // Créer un segment de mémoire partagée
     int shm_id = shmget(IPC_PRIVATE, sizeof(SharedData), IPC_CREAT | 0666);
     if (shm_id < 0) {
         perror("shmget error");
         exit(EXIT_FAILURE);
     }
 
-    // Attacher le segment de mémoire partagée
     shared_data = (SharedData *)shmat(shm_id, NULL, 0);
     if (shared_data == (SharedData *) -1) {
         perror("shmat error");
         exit(EXIT_FAILURE);
     }
 
-    // Initialiser le compteur de clients et le sémaphore
     shared_data->client_count = 0;
-    sem_init(&shared_data->semaphore, 1, 1); // 1 est pour le processus, 1 signifie que le sémaphore est disponible
+    sem_init(&shared_data->semaphore, 1, 1);
+    
+    // Initialiser les sockets à -1
+    for (int i = 0; i < MAX_CLIENTS; i++) {
+        shared_data->clients[i].socket = -1;
+    }
 
-    // Configurer le gestionnaire de signal
     signal(SIGINT, cleanup);
 
-    while (shared_data->client_count < MAX_CLIENTS) {
+    while (1) {
         int newsockfd = accept(sockfd, (struct sockaddr*)&cli_addr, &clilen);
         if (newsockfd < 0) {
             perror("Accept error");
             continue;
         }
 
-        // Enregistre le nouveau client
         printf("Connection accepted from %s\n", inet_ntoa(cli_addr.sin_addr));
+        
+        // Lire le pseudo
         memset(buffer, 0, BUFFER_SIZE);
-        read(newsockfd, buffer, BUFFER_SIZE);
-
-        // Créer un nouveau processus pour gérer la communication avec le client
-        if (fork() == 0) {
-            // Processus enfant : gérer la communication avec le client
-            handle_client(shared_data->client_count - 1); // Passer l'index correct du client
+        if (read(newsockfd, buffer, BUFFER_SIZE) <= 0) {
             close(newsockfd);
-            exit(0);
+            continue;
         }
 
-        sem_wait(&shared_data->semaphore); // Prendre le sémaphore
-        // Store the new client's socket and pseudo
-        shared_data->clients[shared_data->client_count].socket = newsockfd;
-        strncpy(shared_data->clients[shared_data->client_count].pseudo, buffer, BUFFER_SIZE - 1);
-        shared_data->clients[shared_data->client_count].pseudo[BUFFER_SIZE - 1] = '\0'; // Assurer la terminaison nulle
+        // Trouver un slot libre
+        int client_index = -1;
+        sem_wait(&shared_data->semaphore);
+        for (int i = 0; i < MAX_CLIENTS; i++) {
+            if (shared_data->clients[i].socket == -1) {
+                client_index = i;
+                shared_data->clients[i].socket = newsockfd;
+                strncpy(shared_data->clients[i].pseudo, buffer, BUFFER_SIZE - 1);
+                shared_data->clients[i].has_bio = 0;
+                shared_data->client_count++;
+                break;
+            }
+        }
+        sem_post(&shared_data->semaphore);
 
-        printf("Client pseudo: %s\n", shared_data->clients[shared_data->client_count].pseudo);
+        if (client_index == -1) {
+            printf("Server full, connection rejected\n");
+            close(newsockfd);
+            continue;
+        }
+
+        printf("Client connected: %s (index: %d)\n", buffer, client_index);
+
+        if (fork() == 0) {
+            close(sockfd);  // Fermer le socket d'écoute dans le processus enfant
+            handle_client(client_index);
+            exit(0);
+        }
         
-        // Incrémenter le compteur de clients et libérer le sémaphore après modification
-        shared_data->client_count++;
-        sem_post(&shared_data->semaphore); // Libérer le sémaphore
+        close(newsockfd);  // Fermer le socket client dans le processus parent
     }
 
-    // Fermer le socket du serveur
-    close(sockfd);
     return 0;
 }
