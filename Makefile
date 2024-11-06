@@ -1,53 +1,29 @@
-# Compiler and flags
 CC = gcc
-CFLAGS = -Wall -Wextra -Wno-format-truncation -g -pthread
+CFLAGS = -Wall -Wextra -Wno-format-truncation -Wno-unused-parameter -Wno-missing-field-initializers -g -pthread
+CLIENT_DIR = Client
+SERVER_DIR = Serveur
 
-# Target executable names
-TARGET_AWALE = awale
-TARGET_CLIENT = client
-TARGET_SERVER = server
+all: server client awale
 
-# Object files for each target
-OBJS_AWALE = awale.o main.o
-OBJS_CLIENT = client.o
-OBJS_SERVER = server.o
+# Compilation du serveur
+server: $(SERVER_DIR)/server2.c
+	$(CC) $(CFLAGS) -o $(SERVER_DIR)/server $(SERVER_DIR)/server2.c
 
-# Default target
-all: $(TARGET_AWALE) $(TARGET_CLIENT) $(TARGET_SERVER)
+# Compilation du client
+client: $(CLIENT_DIR)/client2.c
+	$(CC) $(CFLAGS) -o $(CLIENT_DIR)/client $(CLIENT_DIR)/client2.c
 
-# Link the target executable for awale
-$(TARGET_AWALE): $(OBJS_AWALE)
-	$(CC) $(OBJS_AWALE) -o $(TARGET_AWALE)
+# Compilation de awale
+awale: awale.o main.o
+	$(CC) $(CFLAGS) -o awale awale.o main.o
 
-# Compile source files to object files for awale
-awale.o: awale.c awale.h
+awale.o: awale.c
 	$(CC) $(CFLAGS) -c awale.c
 
-main.o: main.c awale.h
+main.o: main.c
 	$(CC) $(CFLAGS) -c main.c
 
-# Link the target executable for client
-$(TARGET_CLIENT): $(OBJS_CLIENT)
-	$(CC) $(OBJS_CLIENT) -o $(TARGET_CLIENT)
-
-# Compile source files to object files for client
-client.o: client.c
-	$(CC) $(CFLAGS) -c client.c
-
-# Link the target executable for server
-$(TARGET_SERVER): $(OBJS_SERVER)
-	$(CC) $(OBJS_SERVER) -o $(TARGET_SERVER)
-
-# Compile source files to object files for server
-server.o: server.c
-	$(CC) $(CFLAGS) -c server.c
-
-# Clean up built files
 clean:
-	rm -f $(OBJS_AWALE) $(OBJS_CLIENT) $(OBJS_SERVER) $(TARGET_AWALE) $(TARGET_CLIENT) $(TARGET_SERVER)
+	rm -f $(SERVER_DIR)/server $(CLIENT_DIR)/client awale *.o
 
-# Clean and rebuild
-rebuild: clean all
-
-# Prevent make from doing something with files named clean, all, or rebuild
-.PHONY: clean all rebuild
+.PHONY: all clean
