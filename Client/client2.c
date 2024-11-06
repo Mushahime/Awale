@@ -20,8 +20,9 @@ static void print_menu(void) {
     printf("2. Send private message\n");
     printf("3. List connected users\n");
     printf("4. Bio options\n");
-    printf("5. Clear screen\n");
-    printf("6. Quit\n");
+    printf("5. Play awale vs someone\n");
+    printf("6. Clear screen\n");
+    printf("7. Quit\n");
     printf("\nChoice: ");
     fflush(stdout);
 }
@@ -152,12 +153,21 @@ static void handle_user_input(SOCKET sock) {
                 }
             }
             break;
+        case 5: // Play awale
+            printf("\033[1;34mEnter the nickname of the player you want to play against: \033[0m");
+            if(fgets(buffer, BUF_SIZE - 1, stdin) != NULL) {
+                buffer[strcspn(buffer, "\n")] = 0;
+                snprintf(input, BUF_SIZE, "awale:%s", buffer);
+                write_server(sock, input);
+                printf("\033[1;33mWaiting for response...\033[0m\n");
+            }
+            break;
             
-        case 5: // Clear screen
+        case 6: // Clear screen
             clear_screen();
             break;
             
-        case 6: // Quit
+        case 7: // Quit
             printf("\033[1;33mGoodbye!\033[0m\n");
             exit(EXIT_SUCCESS);
             break;
@@ -212,6 +222,10 @@ static void app(const char *address, const char *name) {
             }
             else if(strstr(buffer, "joined") != NULL || strstr(buffer, "disconnected") != NULL) {
                 printf("\033[1;33m%s\033[0m\n", buffer); // Yellow for system messages
+            }
+            else if(strstr(buffer, "fight") != NULL) {
+                printf("\033[1;31m%s\033[0m\n", buffer); // Red for fight messages
+                printf("yes or no ?\n");
             }
             else {
                 printf("\033[1;32m%s\033[0m\n", buffer); // Green for normal messages

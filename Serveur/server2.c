@@ -5,6 +5,9 @@
 
 #include "server2.h"
 
+pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t socket_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 static void init(void) {
 #ifdef WIN32
     WSADATA wsa;
@@ -17,6 +20,8 @@ static void init(void) {
 }
 
 static void end(void) {
+    pthread_mutex_destroy(&clients_mutex);
+    pthread_mutex_destroy(&socket_mutex);
 #ifdef WIN32
     WSACleanup();
 #endif
@@ -78,6 +83,28 @@ static void handle_bio_command(Client *clients, int actual, int client_index, co
             snprintf(response, BUF_SIZE, "User %s not found.\n", target_pseudo);
             write_client(clients[client_index].sock, response);
         }
+    }
+}
+
+static void handle_awale_command(Client *clients, int actual, int client_index, const char *buffer) {
+    char target_pseudo[BUF_SIZE];
+    strncpy(target_pseudo, buffer + 6, BUF_SIZE - 1);
+    
+    int found = 0;
+    for(int i = 0; i < actual; i++) {
+        if(strcmp(clients[i].name, target_pseudo) == 0) {
+            char response[BUF_SIZE];
+            snprintf(response, BUF_SIZE, "Awale fight request from %s\n", clients[client_index].name);
+            write_client(clients[i].sock, response);
+            found = 1;
+            break;
+        }
+    }
+    
+    if(!found) {
+        char response[BUF_SIZE];
+        snprintf(response, BUF_SIZE, "User %s not found.\n", target_pseudo);
+        write_client(clients[client_index].sock, response);
     }
 }
 
@@ -234,6 +261,9 @@ static void app(void) {
                         else if(strncmp(buffer, "setbio:", 7) == 0 || 
                                 strncmp(buffer, "getbio:", 7) == 0) {
                             handle_bio_command(clients, actual, i, buffer);
+                        }
+                        else if (strncmp(buffer, "awale:", 6) == 0) {
+                            handle_awale_command(clients, actual, i, buffer);
                         }
                         else {
                             send_message_to_all_clients(clients, client, actual, buffer, 0);
