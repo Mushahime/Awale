@@ -234,11 +234,45 @@ static void app(const char *address, const char *name) {
                     #else
                         sleep(5); // Unix
                     #endif
-                    printf("\033[1;33mGame simulation completed!\033[0m\n");
-
-                    // Simulate a game of awale
-                    // TODO: la partie du client qui simule le jeu d'awale
+                    // On attend juste de recevoir le plateau du serveur
                 }
+            }
+            else if(strncmp(buffer, "INIT_AWALE:", 11) == 0) {
+                // Parse le message initial
+                int plateau[TAILLE_PLATEAU];
+                char *token = strtok((char *)buffer + 11, ":");
+                int i = 0;
+                
+                // Récupère l'état du plateau
+                while(token != NULL && i < TAILLE_PLATEAU) {
+                    plateau[i++] = atoi(token);
+                    token = strtok(NULL, ":");
+                }
+                
+                
+                // Affiche le plateau reçu
+                printf("\nJoueur 2:\n");
+                printf("Cases :  11  10   9   8   7   6\n");
+                printf("       [%2d][%2d][%2d][%2d][%2d][%2d]\n", 
+                    plateau[11], plateau[10], plateau[9],
+                    plateau[8], plateau[7], plateau[6]);
+                printf("       [%2d][%2d][%2d][%2d][%2d][%2d]\n",
+                    plateau[0], plateau[1], plateau[2],
+                    plateau[3], plateau[4], plateau[5]);
+                printf("Cases :   0   1   2   3   4   5\n");
+                printf("Joueur 1\n");
+                
+                printf("\n\033[1;33mC'est le tour du joueur %s\033[0m\n", token);
+
+                #ifdef WIN32
+                    Sleep(5000); // Windows
+                #else
+                    sleep(5); // Unix
+                #endif
+                // On attend juste de recevoir le plateau du serveur
+
+                // Pour l'instant on reste ici, on verra plus tard
+                exit(EXIT_SUCCESS);
             }
             else if(strstr(buffer, "fight") != NULL) {
                 printf("\033[1;31m%s\033[0m\n", buffer); // Red for fight messages

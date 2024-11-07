@@ -13,6 +13,7 @@
 #include <unistd.h> /* close */
 #include <netdb.h> /* gethostbyname */
 #include <pthread.h>
+#include "../awale.h"
 #define INVALID_SOCKET -1
 #define SOCKET_ERROR -1
 #define closesocket(s) close(s)
@@ -41,7 +42,7 @@ typedef struct {
 } AwaleChallenge;
 
 typedef struct {
-    AwaleChallenge awale_challenges;
+    AwaleChallenge awale_challenge;
     JeuAwale jeu;
     int tour;  // 1 pour joueur1, 2 pour joueur2
     bool partie_en_cours;
@@ -59,6 +60,10 @@ typedef struct {
 #define MAX_CHALLENGES 50
 static AwaleChallenge awale_challenges[MAX_CHALLENGES];
 static int challenge_count = 0;
+
+#define MAX_PARTIES 25
+static PartieAwale awale_parties[MAX_PARTIES];
+static int partie_count = 0;
 
 static int find_challenge(const char *name);
 static void add_challenge(const char *challenger, const char *challenged);

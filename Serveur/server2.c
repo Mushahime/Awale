@@ -116,8 +116,6 @@ static void remove_challenge(int index) {
     }
 }
 
-// Dans server2.c, modifiez la fonction handle_awale_command:
-
 static void handle_awale_command(Client *clients, int actual, int client_index, const char *buffer) {
     if(strncmp(buffer, "awale_response:", 15) == 0) {
         const char *response = buffer + 15;
@@ -136,12 +134,46 @@ static void handle_awale_command(Client *clients, int actual, int client_index, 
             snprintf(start_msg, BUF_SIZE, "[Challenge] Game started between %s and %s\n", 
                     challenger, challenged);
             
-            // TODO: Implémenter la logique du jeu ici
-            // Pour l'instant, on envoie juste le message aux joueurs concernés
+            // Créer et initialiser la partie
+            PartieAwale partie;
+            JeuAwale jeu;
+            initialiser_plateau(&jeu);
+            partie.jeu = jeu;
+            partie.tour = rand() % 2 + 1;
+            partie.partie_en_cours = true;
+            partie.awale_challenge = awale_challenges[challenge_index];
+            awale_parties[partie_count++] = partie;
+
+            // Préparer le message contenant l'état initial du plateau
+            char plateau_initial[BUF_SIZE];
+            snprintf(plateau_initial, BUF_SIZE, "INIT_AWALE:");
+            for(int i = 0; i < TAILLE_PLATEAU; i++) {
+                char temp[8];
+                snprintf(temp, sizeof(temp), "%d:", jeu.plateau[i]);
+                strcat(plateau_initial, temp);
+            }
+
+            // si le tour est 1, c'est le challenger qui commence
+            // sinon, c'est le challenged
+            // Ajouter le pseudo du joueur qui commence
+            if (partie.tour == 1) {
+                strncat(plateau_initial, challenger, BUF_SIZE - strlen(plateau_initial) - 1);
+            } else {
+                strncat(plateau_initial, challenged, BUF_SIZE - strlen(plateau_initial) - 1);
+            }
+            
+
+            // Envoyer les messages aux deux joueurs
             for(int i = 0; i < actual; i++) {
                 if(strcmp(clients[i].name, challenger) == 0 || 
                    strcmp(clients[i].name, challenged) == 0) {
+                    // Envoyer d'abord le message de début de partie
                     write_client(clients[i].sock, start_msg);
+                    sleep(0.5);  // Attendre un peu pour éviter les problèmes de synchronisation
+                    // Puis envoyer l'état initial du plateau
+                    write_client(clients[i].sock, plateau_initial);
+                    // Lier la partie au client
+                    clients[i].partie_courante = &partie;
                 }
             }
         } else {
@@ -162,12 +194,11 @@ static void handle_awale_command(Client *clients, int actual, int client_index, 
         return;
     }
 
-    // Gestion de la demande initiale de défi
+    // Le reste du code pour la gestion des défis reste inchangé...
     char target_pseudo[BUF_SIZE];
     strncpy(target_pseudo, buffer + 6, BUF_SIZE - 1);
     target_pseudo[BUF_SIZE - 1] = '\0';
     
-    // Vérifier si le joueur n'est pas déjà dans un défi
     if(find_challenge(clients[client_index].name) != -1) {
         char response[BUF_SIZE];
         snprintf(response, BUF_SIZE, "You already have a pending challenge.\n");
@@ -178,7 +209,6 @@ static void handle_awale_command(Client *clients, int actual, int client_index, 
     int found = 0;
     for(int i = 0; i < actual; i++) {
         if(strcmp(clients[i].name, target_pseudo) == 0) {
-            // Vérifier si le joueur cible n'est pas déjà dans un défi
             if(find_challenge(target_pseudo) != -1) {
                 char response[BUF_SIZE];
                 snprintf(response, BUF_SIZE, "Player %s is already in a challenge.\n", target_pseudo);
@@ -186,7 +216,6 @@ static void handle_awale_command(Client *clients, int actual, int client_index, 
                 return;
             }
             
-            // Ajouter le défi à la liste
             add_challenge(clients[client_index].name, target_pseudo);
             
             char challenge_msg[BUF_SIZE];
