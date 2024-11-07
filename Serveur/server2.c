@@ -3,6 +3,7 @@
 #include <errno.h>
 #include <string.h>
 
+#include "../awale.h"
 #include "server2.h"
 
 pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -86,16 +87,113 @@ static void handle_bio_command(Client *clients, int actual, int client_index, co
     }
 }
 
+static int find_challenge(const char *name) {
+    for(int i = 0; i < challenge_count; i++) {
+        // On vérifie si le nom correspond soit au challenger soit au challenged
+        if(strcmp(awale_challenges[i].challenger, name) == 0 || 
+           strcmp(awale_challenges[i].challenged, name) == 0) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+// Fonction auxiliaire pour ajouter un défi
+static void add_challenge(const char *challenger, const char *challenged) {
+    if(challenge_count < MAX_CHALLENGES) {
+        strncpy(awale_challenges[challenge_count].challenger, challenger, PSEUDO_MAX_LENGTH - 1);
+        strncpy(awale_challenges[challenge_count].challenged, challenged, PSEUDO_MAX_LENGTH - 1);
+        challenge_count++;
+    }
+}
+
+// Fonction auxiliaire pour supprimer un défi
+static void remove_challenge(int index) {
+    if(index >= 0 && index < challenge_count) {
+        memmove(&awale_challenges[index], &awale_challenges[index + 1], 
+                (challenge_count - index - 1) * sizeof(AwaleChallenge));
+        challenge_count--;
+    }
+}
+
 static void handle_awale_command(Client *clients, int actual, int client_index, const char *buffer) {
+    if(strncmp(buffer, "awale_response:", 15) == 0) {
+        const char *response = buffer + 15;
+        
+        // Chercher le défi correspondant avec le nom du répondant
+        int challenge_index = find_challenge(clients[client_index].name);
+        if(challenge_index == -1) {
+            return;
+        }
+        
+        char start_msg[BUF_SIZE];
+        char *challenger = awale_challenges[challenge_index].challenger;
+        char *challenged = awale_challenges[challenge_index].challenged;
+        
+        printf("response: %s\n", response);
+        if(strcmp(response, "yes") == 0) {
+            snprintf(start_msg, BUF_SIZE, "[Challenge] Game started between %s and %s\n", 
+                    challenger, challenged);
+            
+            // randomize the starting player
+            int starting_player = rand() % 2;
+            
+            // Envoyer uniquement aux joueurs concernés
+            for(int i = 0; i < actual; i++) {
+                if(strcmp(clients[i].name, challenger) == 0 || 
+                   strcmp(clients[i].name, challenged) == 0) {
+                    write_client(clients[i].sock, start_msg);
+                }
+            }
+        } else {
+            // Jeu refusé
+            snprintf(start_msg, BUF_SIZE, "[Challenge] Game declined by %s\n", challenged);
+            
+            // Informer uniquement le challenger
+            for(int i = 0; i < actual; i++) {
+                if(strcmp(clients[i].name, challenger) == 0) {
+                    write_client(clients[i].sock, start_msg);
+                    break;
+                }
+            }
+        }
+        
+        // Supprimer le défi une fois traité
+        remove_challenge(challenge_index);
+        return;
+    }
+
+    // Gestion de la demande initiale de défi
     char target_pseudo[BUF_SIZE];
     strncpy(target_pseudo, buffer + 6, BUF_SIZE - 1);
+    target_pseudo[BUF_SIZE - 1] = '\0';  // S'assurer de la terminaison
+    
+    // Vérifier si le joueur n'est pas déjà dans un défi
+    if(find_challenge(clients[client_index].name) != -1) {
+        char response[BUF_SIZE];
+        snprintf(response, BUF_SIZE, "You already have a pending challenge.\n");
+        write_client(clients[client_index].sock, response);
+        return;
+    }
     
     int found = 0;
     for(int i = 0; i < actual; i++) {
         if(strcmp(clients[i].name, target_pseudo) == 0) {
-            char response[BUF_SIZE];
-            snprintf(response, BUF_SIZE, "Awale fight request from %s\n", clients[client_index].name);
-            write_client(clients[i].sock, response);
+            // Vérifier si le joueur cible n'est pas déjà dans un défi
+            if(find_challenge(target_pseudo) != -1) {
+                char response[BUF_SIZE];
+                snprintf(response, BUF_SIZE, "Player %s is already in a challenge.\n", target_pseudo);
+                write_client(clients[client_index].sock, response);
+                return;
+            }
+            
+            // Ajouter le défi à la liste
+            add_challenge(clients[client_index].name, target_pseudo);
+            
+            char challenge_msg[BUF_SIZE];
+            snprintf(challenge_msg, BUF_SIZE, "Awale fight request from %s\n", 
+                    clients[client_index].name);
+            write_client(clients[i].sock, challenge_msg);
             found = 1;
             break;
         }
@@ -107,6 +205,7 @@ static void handle_awale_command(Client *clients, int actual, int client_index, 
         write_client(clients[client_index].sock, response);
     }
 }
+
 
 static void handle_private_message(Client *clients, int actual, int sender_index, const char *buffer) {
     char target_pseudo[BUF_SIZE];
@@ -262,7 +361,8 @@ static void app(void) {
                                 strncmp(buffer, "getbio:", 7) == 0) {
                             handle_bio_command(clients, actual, i, buffer);
                         }
-                        else if (strncmp(buffer, "awale:", 6) == 0) {
+                        else if(strncmp(buffer, "awale:", 6) == 0 || 
+                                strncmp(buffer, "awale_response:", 14) == 0) {  // Ajout de cette condition
                             handle_awale_command(clients, actual, i, buffer);
                         }
                         else {
@@ -300,18 +400,27 @@ static void send_message_to_all_clients(Client *clients, Client sender, int actu
 {
    int i = 0;
    char message[BUF_SIZE];
-   message[0] = 0;
+   
    for(i = 0; i < actual; i++)
    {
       /* we don't send message to the sender */
       if(sender.sock != clients[i].sock)
       {
+         message[0] = 0;  // Reset message buffer for each client
+         
          if(from_server == 0)
          {
+            // Pour les messages normaux des utilisateurs
             strncpy(message, sender.name, BUF_SIZE - 1);
             strncat(message, " : ", sizeof message - strlen(message) - 1);
+            strncat(message, buffer, sizeof message - strlen(message) - 1);
          }
-         strncat(message, buffer, sizeof message - strlen(message) - 1);
+         else
+         {
+            // Pour les messages système (join, disconnect, etc.)
+            strncpy(message, buffer, BUF_SIZE - 1);
+         }
+         
          write_client(clients[i].sock, message);
       }
    }

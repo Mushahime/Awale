@@ -6,3 +6,5 @@ to launch server -> go in repo "Server" and ./server
 to launch client -> go in repo "Client" and ./client 127.0.0.1 
 
 warning : listen socket is like a FIFO for the connection and pseudo is unique
+
+gérer les mutex à faire

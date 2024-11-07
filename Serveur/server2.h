@@ -31,18 +31,40 @@ typedef struct in_addr IN_ADDR;
 #define MAX_BIO_LENGTH 1000
 #define PSEUDO_MAX_LENGTH 50
 #define PSEUDO_MIN_LENGTH 2
-
 extern pthread_mutex_t clients_mutex;
 extern pthread_mutex_t socket_mutex;
 #define MUTEX_TIMEOUT_SEC 10
+
+typedef struct {
+    char joueur1[PSEUDO_MAX_LENGTH];
+    char joueur2[PSEUDO_MAX_LENGTH];
+    JeuAwale jeu;
+    int tour;  // 1 pour joueur1, 2 pour joueur2
+    bool partie_en_cours;
+} PartieAwale;
 
 typedef struct {
     SOCKET sock;
     char name[BUF_SIZE];
     char bio[MAX_BIO_LENGTH];
     int has_bio;
+    bool en_jeu;  // Nouveau: indique si le client est en train de jouer
+    PartieAwale *partie_courante;  // Nouveau: pointeur vers la partie en cours
 } Client;
 
+#define MAX_PARTIES 25
+static PartieAwale parties_awale[MAX_PARTIES];
+static int parties_count = 0;
+
+#define MAX_CHALLENGES 50
+static AwaleChallenge awale_challenges[MAX_CHALLENGES];
+static int challenge_count = 0;
+
+static int find_challenge(const char *name);
+static void add_challenge(const char *challenger, const char *challenged);
+static void remove_challenge(int index);
+//static void envoyer_plateau(SOCKET sock, JeuAwale *jeu, int joueur);
+//static void demarrer_partie_awale(Client *clients, int actual, const char *joueur1, const char *joueur2)
 static void init(void);
 static void end(void);
 static void app(void);

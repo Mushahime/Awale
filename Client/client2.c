@@ -4,7 +4,9 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
+#include <time.h>
 #include "client2.h"
+#include "../awale.h"
 
 static void clear_screen(void) {
 #ifdef WIN32
@@ -159,7 +161,7 @@ static void handle_user_input(SOCKET sock) {
                 buffer[strcspn(buffer, "\n")] = 0;
                 snprintf(input, BUF_SIZE, "awale:%s", buffer);
                 write_server(sock, input);
-                printf("\033[1;33mWaiting for response...\033[0m\n");
+                printf("Waiting for response...\n");
             }
             break;
             
@@ -223,9 +225,40 @@ static void app(const char *address, const char *name) {
             else if(strstr(buffer, "joined") != NULL || strstr(buffer, "disconnected") != NULL) {
                 printf("\033[1;33m%s\033[0m\n", buffer); // Yellow for system messages
             }
+            else if(strstr(buffer, "[Challenge") != NULL) {
+                printf("\033[1;33m%s\033[0m\n", buffer); // Yellow for challenge messages
+                if(strstr(buffer, "Game started") != NULL) {
+                    printf("\033[1;33mStarting game in 5 seconds...\033[0m\n");
+                    #ifdef WIN32
+                        Sleep(5000); // Windows
+                    #else
+                        sleep(5); // Unix
+                    #endif
+                    printf("\033[1;33mGame simulation completed!\033[0m\n");
+
+                    // Simulate a game of awale
+                    // TODO: la partie du client qui simule le jeu d'awale
+                }
+            }
             else if(strstr(buffer, "fight") != NULL) {
                 printf("\033[1;31m%s\033[0m\n", buffer); // Red for fight messages
                 printf("yes or no ?\n");
+                
+                char response[BUF_SIZE];
+                while (1) {
+                    if (fgets(response, BUF_SIZE, stdin) != NULL) {
+                        response[strcspn(response, "\n")] = 0; // Remove newline
+                        
+                        if (strcmp(response, "yes") == 0 || strcmp(response, "no") == 0) {
+                            char challenge_response[BUF_SIZE];
+                            snprintf(challenge_response, BUF_SIZE, "awale_response:%s", response);
+                            write_server(sock, challenge_response);
+                            break;
+                        } else {
+                            printf("Invalid input. Please enter 'yes' or 'no':\n");
+                        }
+                    }
+                }
             }
             else {
                 printf("\033[1;32m%s\033[0m\n", buffer); // Green for normal messages
