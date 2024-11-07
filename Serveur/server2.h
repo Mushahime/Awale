@@ -44,17 +44,22 @@ typedef struct {
 } PartieAwale;
 
 typedef struct {
+    char challenger[PSEUDO_MAX_LENGTH];
+    char challenged[PSEUDO_MAX_LENGTH];
+} AwaleChallenge;
+
+typedef struct {
     SOCKET sock;
     char name[BUF_SIZE];
     char bio[MAX_BIO_LENGTH];
     int has_bio;
-    bool en_jeu;  // Nouveau: indique si le client est en train de jouer
-    PartieAwale *partie_courante;  // Nouveau: pointeur vers la partie en cours
+    //bool en_jeu;  // Nouveau: indique si le client est en train de jouer
+    //PartieAwale *partie_courante;  // Nouveau: pointeur vers la partie en cours
 } Client;
 
-#define MAX_PARTIES 25
-static PartieAwale parties_awale[MAX_PARTIES];
-static int parties_count = 0;
+//#define MAX_PARTIES 25
+//static PartieAwale parties_awale[MAX_PARTIES];
+//static int parties_count = 0;
 
 #define MAX_CHALLENGES 50
 static AwaleChallenge awale_challenges[MAX_CHALLENGES];
