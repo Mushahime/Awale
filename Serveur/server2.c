@@ -387,6 +387,24 @@ static void list_connected_clients(Client *clients, int actual, int requester_in
     write_client(clients[requester_index].sock, list);
 }
 
+static void handle_awale_list(Client *clients, int actual, int client_index) {
+    char list[BUF_SIZE * MAX_PARTIES] = "Games in progress:\n";
+    
+    for(int i = 0; i < partie_count; i++) {
+        char game_entry[BUF_SIZE];
+        snprintf(game_entry, BUF_SIZE, "- %s vs %s\n", 
+                awale_parties[i].awale_challenge.challenger, 
+                awale_parties[i].awale_challenge.challenged);
+        strcat(list, game_entry);
+    }
+
+    if (partie_count == 0) {
+        strcat(list, "0 game in progress\n");
+    }
+    
+    write_client(clients[client_index].sock, list);
+}
+
 static void app(void) {
     SOCKET sock = init_connection();
     char buffer[BUF_SIZE];
@@ -480,6 +498,7 @@ static void app(void) {
                     if(c == 0) {
                         closesocket(clients[i].sock);
                         remove_client(clients, i, &actual);
+
                         strncpy(buffer, client.name, BUF_SIZE - 1);
                         strncat(buffer, " disconnected!\n", BUF_SIZE - strlen(buffer) - 1);
                         send_message_to_all_clients(clients, client, actual, buffer, 1);
@@ -503,6 +522,9 @@ static void app(void) {
                         }
                         else if (strncmp(buffer, "awale_move:", 11) == 0) {
                             handle_awale_move(clients, actual, i, buffer + 11);
+                        }
+                        else if (strncmp(buffer, "awale_list:", 11) == 0) {
+                            handle_awale_list(clients, actual, i);
                         }
                         else {
                             send_message_to_all_clients(clients, client, actual, buffer, 0);
@@ -540,33 +562,43 @@ static void remove_client(Client *clients, int to_remove, int *actual)
     // Si le client était dans une partie
     if(clients[to_remove].partie_index != -1) {
         int partie_index = clients[to_remove].partie_index;
-        PartieAwale *partie = &awale_parties[partie_index];
         
         // Trouver et notifier l'autre joueur
         for(int i = 0; i < *actual; i++) {
             if(i != to_remove && clients[i].partie_index == partie_index) {
                 char msg[BUF_SIZE];
-                sleep(1);  // Attendre un peu pour éviter les messages mélangés
+                char buffer[BUF_SIZE];
                 snprintf(msg, BUF_SIZE, "Game over! %s has left\n", clients[to_remove].name);
                 write_client(clients[i].sock, msg);
-                // Réinitialiser partie_index pour l'autre joueur
+
+                // Attendre l'acquittement avec un select() pour éviter de bloquer indéfiniment
+                fd_set rdfs;
+                struct timeval tv;
+                tv.tv_sec = 5;  // timeout de 5 secondes
+                tv.tv_usec = 0;
+
+                FD_ZERO(&rdfs);
+                FD_SET(clients[i].sock, &rdfs);
+
+                if(select(clients[i].sock + 1, &rdfs, NULL, NULL, &tv) > 0) {
+                    int n = read_client(clients[i].sock, buffer);
+                    if(n > 0 && strncmp(buffer, "ack_gameover", 12) == 0) {
+                        // Acquittement reçu, on peut continuer
+                        clients[i].partie_index = -1;
+                        break;
+                    }
+                }
+                // Même si pas d'acquittement, on continue après le timeout
                 clients[i].partie_index = -1;
                 break;
             }
-        }
-
-        //Supprimer challenge
-        int challenge_index = find_challenge(partie->awale_challenge.challenger);
-        if (challenge_index != -1) {
-            remove_challenge(challenge_index);
         }
         
         // Supprimer la partie
         remove_partie(partie_index);
     }
-    /* we remove the client in the array */
+
     memmove(clients + to_remove, clients + to_remove + 1, (*actual - to_remove - 1) * sizeof(Client));
-    /* number client - 1 */
     (*actual)--;
 }
 

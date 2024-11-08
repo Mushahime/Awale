@@ -11,7 +11,9 @@ warning : listen socket is like a FIFO for the connection and pseudo is unique
 - gérer les mutex
 - variables awale_challenges à enlever
 - voir pour code 0 (à discuter)
-5 -> mode observateur et listing des parties en cours
+- répétition du code
+
+5 -> mode observateur
 6 -> chat (mp pendant la game) + switch case pendant le jeu
 8 -> spectateur (revoir l'envoie des parties) 
 9 -> sauvegarder une partie avec une suite de char pour ensuite pouvoir lancer cette suite de char et afficher la partie (rajouter un booléen dans la struct)

@@ -8,7 +8,6 @@
 #include "client2.h"
 #include "../awale.h"
 
-//variable global pour le pseudo
 char pseudo[PSEUDO_MAX_LENGTH];
 bool partie_en_cours = false;
 
@@ -27,8 +26,9 @@ static void print_menu(void) {
     printf("3. List connected users\n");
     printf("4. Bio options\n");
     printf("5. Play awale vs someone\n");
-    printf("6. Clear screen\n");
-    printf("7. Quit\n");
+    printf("6. ALl games in progression\n");
+    printf("7. Clear screen\n");
+    printf("8. Quit\n");
     printf("\n");
     printf("\nChoice: ");
     fflush(stdout);
@@ -170,12 +170,15 @@ static void handle_user_input(SOCKET sock) {
                 printf("Waiting for response...\n");
             }
             break;
-            
-        case 6: // Clear screen
+        case 6: // List games in progress
+            strcpy(buffer, "awale_list:");
+            write_server(sock, buffer);
+            break;  
+        case 7: // Clear screen
             clear_screen();
             break;
             
-        case 7: // Quit
+        case 8: // Quit
             printf("\033[1;33mGoodbye!\033[0m\n");
             exit(EXIT_SUCCESS);
             break;
@@ -354,7 +357,7 @@ static void app(const char *address, const char *name) {
             }
             else if(strstr(buffer, "fight") != NULL) {
                 printf("\033[1;31m%s\033[0m\n", buffer); // Red for fight messages
-                printf("yes or no ?\n");
+                printf("\033[1;31mDo you accept the challenge? (yes/no)\033[0m\n");
                 
                 char response[BUF_SIZE];
                 while (1) {
@@ -375,8 +378,9 @@ static void app(const char *address, const char *name) {
             }
             else if(strncmp(buffer, "Game over", 9) == 0) {
                 printf("\033[1;31m%s\033[0m\n", buffer); // Red for win messages
-                printf("we are here\n");
                 partie_en_cours = false;
+                // Envoyer l'acquittement
+                write_server(sock, "ack_gameover");
             }
             else {
                 printf("\033[1;32m%s\033[0m\n", buffer); // Green for normal messages
