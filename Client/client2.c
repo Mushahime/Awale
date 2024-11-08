@@ -244,14 +244,14 @@ static void app(const char *address, const char *name) {
                     // On attend juste de recevoir le plateau du serveur
                 }
             }
-            else if(strncmp(buffer, "INIT_AWALE:", 11) == 0) {
+            else if(strncmp(buffer, "AWALE:", 6) == 0) {
                 // Parse le message initial
                 partie_en_cours = true;
                 int plateau[TAILLE_PLATEAU];
                 int joueur;
                 char nom[PSEUDO_MAX_LENGTH];
 
-                char *msg = strdup(buffer + 11);  // Copie le message sans le préfixe
+                char *msg = strdup(buffer + 6);  // Copie le message sans le préfixe
                 char *token = strtok(msg, ":");
                 int i = 0;
 
@@ -275,11 +275,15 @@ static void app(const char *address, const char *name) {
                     joueur = atoi(token);
                 }
 
+                // Récupérer les scores des joueurs
+                int score_joueur1 = atoi(strtok(NULL, ":"));
+                int score_joueur2 = atoi(strtok(NULL, ":"));
+
                 free(msg);  // Libérer la mémoire allouée
                 
                 
                 // Afficher le plateau
-                afficher_plateau2(plateau);
+                afficher_plateau2(plateau, score_joueur1, score_joueur2);
 
                 // Comparer les deux pseudos pour savoir si c'est notre tour
                 if (strcmp(nom, pseudo) == 0) {

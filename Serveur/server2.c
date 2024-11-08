@@ -168,7 +168,7 @@ static void handle_awale_response(Client *clients, int actual, int client_index,
         // Préparer le message pour le plateau initial
         char plateau_initial[BUF_SIZE] = {0};  // Initialisation à zéro
         int offset = 0;
-        offset += snprintf(plateau_initial, BUF_SIZE, "INIT_AWALE:");
+        offset += snprintf(plateau_initial, BUF_SIZE, "AWALE:");
         // Ajouter les valeurs du plateau
         for(int i = 0; i < TAILLE_PLATEAU; i++) {
             offset += snprintf(plateau_initial + offset, BUF_SIZE - offset, "%d:", nouvelle_partie.jeu.plateau[i]);
@@ -182,6 +182,10 @@ static void handle_awale_response(Client *clients, int actual, int client_index,
             offset += snprintf(plateau_initial + offset, BUF_SIZE - offset, "%s:%d", 
                 challenged, nouvelle_partie.tour);
         }
+
+        // Ajouter les scores des joueurs
+        offset += snprintf(plateau_initial + offset, BUF_SIZE - offset, ":%d:%d", 
+                nouvelle_partie.jeu.score_joueur1, nouvelle_partie.jeu.score_joueur2);
 
         printf("Debug - Message construit : %s\n", plateau_initial);  // Debug
 
@@ -214,7 +218,6 @@ static void handle_awale_response(Client *clients, int actual, int client_index,
     remove_challenge(challenge_index);
 }
 
-// Nouvelle fonction pour gérer l'envoi d'un défi
 static void handle_awale_challenge(Client *clients, int actual, int client_index, const char *target_pseudo) {
     // Vérifier si le challenger a déjà un défi en cours
     if(find_challenge(clients[client_index].name) != -1) {
@@ -289,7 +292,7 @@ static void handle_awale_move(Client *clients, int actual, int client_index, con
             // Envoyer le plateau mis à jour
             char plateau_updated[BUF_SIZE] = {0};  // Initialisation à zéro
             int offset = 0;
-            offset += snprintf(plateau_updated, BUF_SIZE, "INIT_AWALE:");
+            offset += snprintf(plateau_updated, BUF_SIZE, "AWALE:");
             // Ajouter les valeurs du plateau
             for(int i = 0; i < TAILLE_PLATEAU; i++) {
                 offset += snprintf(plateau_updated + offset, BUF_SIZE - offset, "%d:", jeu->plateau[i]);
@@ -302,6 +305,9 @@ static void handle_awale_move(Client *clients, int actual, int client_index, con
                 offset += snprintf(plateau_updated + offset, BUF_SIZE - offset, "%s:%d", 
                     partie->awale_challenge.challenged, partie->tour);
             }
+            // Ajouter les scores des joueurs
+            offset += snprintf(plateau_updated + offset, BUF_SIZE - offset, ":%d:%d", 
+                    jeu->score_joueur1, jeu->score_joueur2);
 
             // Mettre à jour les clients avec l'index de la partie
             for(int i = 0; i < actual; i++) {
