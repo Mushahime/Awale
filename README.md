@@ -7,9 +7,12 @@ to launch client -> go in repo "Client" and ./client 127.0.0.1
 
 warning : listen socket is like a FIFO for the connection and pseudo is unique
 
-
-#TODO
-
-gérer les mutex
-je voudrais que si un joueur se déconnecte, ça stoppe le jeu
-6, 8, 9 (et 10 si on a le temps et l'envie -> je pense on le fera pas)
+# TODO
+- gérer les mutex
+- variables awale_challenges à enlever
+- voir pour code 0 (à discuter)
+5 -> mode observateur et listing des parties en cours
+6 -> chat (mp pendant la game) + switch case pendant le jeu
+8 -> spectateur (revoir l'envoie des parties) 
+9 -> sauvegarder une partie avec une suite de char pour ensuite pouvoir lancer cette suite de char et afficher la partie (rajouter un booléen dans la struct)
+(Q10 si on a le temps et l'envie -> je pense on la fera pas)

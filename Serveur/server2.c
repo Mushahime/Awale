@@ -332,7 +332,7 @@ static void handle_awale_move(Client *clients, int actual, int client_index, con
             }
         }
     } else {
-        // Coup invalide
+        // Coup invalide pour famine
         char error_msg[BUF_SIZE];
         //envoyer le numéro du joueur qui a joué le coup et le message d'erreur
         snprintf(error_msg, BUF_SIZE, "ERROR:%s:%d\n", INVALID_MOVE_FAMINE, joueur);    
@@ -537,10 +537,37 @@ static void clear_clients(Client *clients, int actual)
 
 static void remove_client(Client *clients, int to_remove, int *actual)
 {
-   /* we remove the client in the array */
-   memmove(clients + to_remove, clients + to_remove + 1, (*actual - to_remove - 1) * sizeof(Client));
-   /* number client - 1 */
-   (*actual)--;
+    // Si le client était dans une partie
+    if(clients[to_remove].partie_index != -1) {
+        int partie_index = clients[to_remove].partie_index;
+        PartieAwale *partie = &awale_parties[partie_index];
+        
+        // Trouver et notifier l'autre joueur
+        for(int i = 0; i < *actual; i++) {
+            if(i != to_remove && clients[i].partie_index == partie_index) {
+                char msg[BUF_SIZE];
+                sleep(1);  // Attendre un peu pour éviter les messages mélangés
+                snprintf(msg, BUF_SIZE, "Game over! %s has left\n", clients[to_remove].name);
+                write_client(clients[i].sock, msg);
+                // Réinitialiser partie_index pour l'autre joueur
+                clients[i].partie_index = -1;
+                break;
+            }
+        }
+
+        //Supprimer challenge
+        int challenge_index = find_challenge(partie->awale_challenge.challenger);
+        if (challenge_index != -1) {
+            remove_challenge(challenge_index);
+        }
+        
+        // Supprimer la partie
+        remove_partie(partie_index);
+    }
+    /* we remove the client in the array */
+    memmove(clients + to_remove, clients + to_remove + 1, (*actual - to_remove - 1) * sizeof(Client));
+    /* number client - 1 */
+    (*actual)--;
 }
 
 static void send_message_to_all_clients(Client *clients, Client sender, int actual, const char *buffer, char from_server)

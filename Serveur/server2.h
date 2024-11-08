@@ -58,7 +58,7 @@ typedef struct {
     int partie_index;  // Index de la partie en cours (-1 si aucune)
 } Client;
 
-
+// challenge n'est plus trop utile
 #define MAX_CHALLENGES 25
 static AwaleChallenge awale_challenges[MAX_CHALLENGES];
 static int challenge_count = 0;

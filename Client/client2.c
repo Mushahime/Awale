@@ -29,6 +29,7 @@ static void print_menu(void) {
     printf("5. Play awale vs someone\n");
     printf("6. Clear screen\n");
     printf("7. Quit\n");
+    printf("\n");
     printf("\nChoice: ");
     fflush(stdout);
 }
@@ -366,13 +367,15 @@ static void app(const char *address, const char *name) {
                             write_server(sock, challenge_response);
                             break;
                         } else {
-                            printf("Invalid input. Please enter 'yes' or 'no':\n");
+                            // en rouge
+                            printf("\033[1;31mPlease enter 'yes' or 'no'\033[0m\n");
                         }
                     }
                 }
             }
             else if(strncmp(buffer, "Game over", 9) == 0) {
                 printf("\033[1;31m%s\033[0m\n", buffer); // Red for win messages
+                printf("we are here\n");
                 partie_en_cours = false;
             }
             else {
