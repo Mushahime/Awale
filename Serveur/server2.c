@@ -148,7 +148,6 @@ static void handle_awale_response(Client *clients, int actual, int client_index,
         srand(time(NULL));
         nouvelle_partie.tour = rand() % 2 + 1;
         printf("Debug - Tour initial : %d\n", nouvelle_partie.tour);  // Debug
-        nouvelle_partie.partie_en_cours = true;
         nouvelle_partie.awale_challenge = awale_challenges[challenge_index];
         
         // Sauvegarder la partie dans le tableau
@@ -268,6 +267,17 @@ static void handle_awale_move(Client *clients, int actual, int client_index, con
 
     int case_depart = atoi(move);
     int joueur = partie->tour;
+
+    // Vérification case vide (ça aurait pu être traité après jouer coup)
+    if (jeu->plateau[case_depart] == 0) {
+        char error_msg[BUF_SIZE];
+        //envoyer le numéro du joueur qui a joué le coup et le message d'erreur
+        snprintf(error_msg, BUF_SIZE, "ERROR:%s:%d\n", INVALID_MOVE_EMPTY, joueur);
+        printf("error_msg: %s\n", error_msg);   
+        write_client(clients[client_index].sock, error_msg);
+        return;
+    }
+
     bool coup_valide = jouer_coup(jeu, joueur, case_depart);
 
     if (coup_valide) {
@@ -276,28 +286,34 @@ static void handle_awale_move(Client *clients, int actual, int client_index, con
 
         // Vérifier si la partie est terminée
         if (verifier_fin_partie(jeu)) {
-            partie->partie_en_cours = false;
             char end_msg[BUF_SIZE];
             snprintf(end_msg, BUF_SIZE, "Game over! %s wins!\n", 
                     (jeu->score_joueur1 > jeu->score_joueur2) ? 
                     partie->awale_challenge.challenger : partie->awale_challenge.challenged);
-            // Ecriture du message de fin aux deux joueurs
+            
+            // Réinitialiser les indices de partie pour les deux joueurs
             for(int i = 0; i < actual; i++) {
                 if(strcmp(clients[i].name, partie->awale_challenge.challenger) == 0 || 
                    strcmp(clients[i].name, partie->awale_challenge.challenged) == 0) {
+                    clients[i].partie_index = -1;
                     write_client(clients[i].sock, end_msg);
                 }
             }
+            // Libérez challenge
+            int partie_challenge_index = find_challenge(partie->awale_challenge.challenger);
+            if (partie_challenge_index != -1) {
+                remove_challenge(partie_challenge_index);
+            }
+            // Libérer la partie
+            remove_partie(partie_index);
         } else {
             // Envoyer le plateau mis à jour
-            char plateau_updated[BUF_SIZE] = {0};  // Initialisation à zéro
+            char plateau_updated[BUF_SIZE] = {0};
             int offset = 0;
             offset += snprintf(plateau_updated, BUF_SIZE, "AWALE:");
-            // Ajouter les valeurs du plateau
             for(int i = 0; i < TAILLE_PLATEAU; i++) {
                 offset += snprintf(plateau_updated + offset, BUF_SIZE - offset, "%d:", jeu->plateau[i]);
             }
-            // Ajouter le pseudo du joueur qui commence et son numéro
             if (partie->tour == 1) {
                 offset += snprintf(plateau_updated + offset, BUF_SIZE - offset, "%s:%d", 
                     partie->awale_challenge.challenger, partie->tour);
@@ -305,11 +321,9 @@ static void handle_awale_move(Client *clients, int actual, int client_index, con
                 offset += snprintf(plateau_updated + offset, BUF_SIZE - offset, "%s:%d", 
                     partie->awale_challenge.challenged, partie->tour);
             }
-            // Ajouter les scores des joueurs
             offset += snprintf(plateau_updated + offset, BUF_SIZE - offset, ":%d:%d", 
                     jeu->score_joueur1, jeu->score_joueur2);
 
-            // Mettre à jour les clients avec l'index de la partie
             for(int i = 0; i < actual; i++) {
                 if(strcmp(clients[i].name, partie->awale_challenge.challenger) == 0 || 
                    strcmp(clients[i].name, partie->awale_challenge.challenged) == 0) {
@@ -319,10 +333,12 @@ static void handle_awale_move(Client *clients, int actual, int client_index, con
         }
     } else {
         // Coup invalide
-        // TODO: Envoyer un message d'erreur
+        char error_msg[BUF_SIZE];
+        //envoyer le numéro du joueur qui a joué le coup et le message d'erreur
+        snprintf(error_msg, BUF_SIZE, "ERROR:%s:%d\n", INVALID_MOVE_FAMINE, joueur);    
+        write_client(clients[client_index].sock, error_msg);
     }
 }
-
 
 
 static void handle_private_message(Client *clients, int actual, int sender_index, const char *buffer) {
@@ -500,6 +516,14 @@ static void app(void) {
     
     clear_clients(clients, actual);
     end_connection(sock);
+}
+
+static void remove_partie(int index) {
+    if(index >= 0 && index < partie_count) {
+        memmove(&awale_parties[index], &awale_parties[index + 1], 
+                (partie_count - index - 1) * sizeof(PartieAwale));
+        partie_count--;
+    }
 }
 
 static void clear_clients(Client *clients, int actual)

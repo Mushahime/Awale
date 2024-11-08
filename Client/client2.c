@@ -314,6 +314,43 @@ static void app(const char *address, const char *name) {
                     }
                 }
             }
+            else if(strncmp(buffer, "ERROR:", 6) == 0) {
+                // récupérer le numéro du joueur qui a joué le coup + le message d'erreur
+                // format: ERROR:MESSAGE:NUMERO_JOUEUR
+
+                char *error = strtok(buffer, ":");
+                char *message = strtok(NULL, ":");
+                char *joueur_str = strtok(NULL, ":");
+                int joueur = atoi(joueur_str);
+
+                printf("\033[1;31m%s: %s\033[0m\n", error, message);
+
+                // Demander un nouveau coup
+                char move[BUF_SIZE];
+                int first, last;
+                if (joueur == 1) {
+                    first = 0;
+                    last = 5;
+                } else {
+                    first = 6;
+                    last = 11;
+                }
+                
+                printf("Please enter a valid move between %d and %d:\n", first, last);
+                while (1) {
+                    if (fgets(move, BUF_SIZE, stdin) != NULL) {
+                        move[strcspn(move, "\n")] = 0;
+                        int move_int = atoi(move);
+                        if (move_int >= first && move_int <= last) {
+                            snprintf(buffer, BUF_SIZE, "awale_move:%d", move_int);
+                            write_server(sock, buffer);
+                            break;
+                        } else {
+                            printf("Invalid range! Please enter a number between %d and %d:\n", first, last);
+                        }
+                    }
+                }
+            }
             else if(strstr(buffer, "fight") != NULL) {
                 printf("\033[1;31m%s\033[0m\n", buffer); // Red for fight messages
                 printf("yes or no ?\n");

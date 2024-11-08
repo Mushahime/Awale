@@ -17,6 +17,9 @@
 #define INVALID_SOCKET -1
 #define SOCKET_ERROR -1
 #define closesocket(s) close(s)
+#define INVALID_MOVE_FAMINE "The selected case would cause famine for your opponent"
+#define INVALID_MOVE_EMPTY "The selected case is empty"
+
 typedef int SOCKET;
 typedef struct sockaddr_in SOCKADDR_IN;
 typedef struct sockaddr SOCKADDR;
@@ -45,7 +48,6 @@ typedef struct {
     AwaleChallenge awale_challenge;
     JeuAwale jeu;
     int tour;  // 1 pour joueur1, 2 pour joueur2
-    bool partie_en_cours;
 } PartieAwale;
 
 typedef struct {
@@ -57,7 +59,7 @@ typedef struct {
 } Client;
 
 
-#define MAX_CHALLENGES 50
+#define MAX_CHALLENGES 25
 static AwaleChallenge awale_challenges[MAX_CHALLENGES];
 static int challenge_count = 0;
 
@@ -68,7 +70,6 @@ static int partie_count = 0;
 static int find_challenge(const char *name);
 static void add_challenge(const char *challenger, const char *challenged);
 static void remove_challenge(int index);
-
 static void init(void);
 static void end(void);
 static void app(void);
@@ -86,5 +87,6 @@ static void list_connected_clients(Client *clients, int actual, int requester_in
 static void handle_awale_response(Client *clients, int actual, int client_index, const char *response);
 static void handle_awale_challenge(Client *clients, int actual, int client_index, const char *target_pseudo);
 static void handle_awale_move(Client *clients, int actual, int client_index, const char *move);
+static void remove_partie(int index);
 
 #endif 
