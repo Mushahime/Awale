@@ -22,6 +22,19 @@ void afficher_plateau(JeuAwale *jeu) {
     printf("\nScore\nJ1: %d\nJ2: %d\n", jeu->score_joueur1, jeu->score_joueur2);
 }
 
+void afficher_plateau2(int plateau[TAILLE_PLATEAU]) {
+    printf("\nJoueur 2:\n");
+    printf("Cases :  11  10   9   8   7   6\n");
+    printf("       [%2d][%2d][%2d][%2d][%2d][%2d]\n", 
+           plateau[11], plateau[10], plateau[9],
+           plateau[8], plateau[7], plateau[6]);
+    printf("       [%2d][%2d][%2d][%2d][%2d][%2d]\n",
+           plateau[0], plateau[1], plateau[2],
+           plateau[3], plateau[4], plateau[5]);
+    printf("Cases :   0   1   2   3   4   5\n");
+    printf("Joueur 1\n");
+}
+
 bool jouer_coup(JeuAwale *jeu, int joueur, int case_depart) {
     if ((joueur == 1 && (case_depart < 0 || case_depart >= 6)) || 
         (joueur == 2 && (case_depart < 6 || case_depart >= 12)) || 

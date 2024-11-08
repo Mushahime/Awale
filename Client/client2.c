@@ -211,7 +211,9 @@ static void app(const char *address, const char *name) {
         
         if(FD_ISSET(STDIN_FILENO, &rdfs)) {
             handle_user_input(sock);
-            print_menu();
+            if (!partie_en_cours) {
+                print_menu();
+            }
         }
         else if(FD_ISSET(sock, &rdfs)) {
             int n = read_server(sock, buffer);
@@ -235,9 +237,9 @@ static void app(const char *address, const char *name) {
                 if(strstr(buffer, "Game started") != NULL) {
                     printf("\033[1;33mStarting game in 5 seconds...\033[0m\n");
                     #ifdef WIN32
-                        Sleep(5000); // Windows
+                        Sleep(2000); // Windows
                     #else
-                        sleep(5); // Unix
+                        sleep(2); // Unix
                     #endif
                     // On attend juste de recevoir le plateau du serveur
                 }
@@ -276,27 +278,8 @@ static void app(const char *address, const char *name) {
                 free(msg);  // Libérer la mémoire allouée
                 
                 
-                // Affiche le plateau reçu
-                printf("\nJoueur 2:\n");
-                printf("Cases :  11  10   9   8   7   6\n");
-                printf("       [%2d][%2d][%2d][%2d][%2d][%2d]\n", 
-                    plateau[11], plateau[10], plateau[9],
-                    plateau[8], plateau[7], plateau[6]);
-                printf("       [%2d][%2d][%2d][%2d][%2d][%2d]\n",
-                    plateau[0], plateau[1], plateau[2],
-                    plateau[3], plateau[4], plateau[5]);
-                printf("Cases :   0   1   2   3   4   5\n");
-                printf("Joueur 1\n");
-                
-                printf("\n\033[1;33mC'est le tour du joueur %s (joueur %d)\033[0m\n", nom, joueur);
-                printf("ps: %s\n", pseudo);
-
-                #ifdef WIN32
-                    Sleep(5000); // Windows
-                #else
-                    sleep(5); // Unix
-                #endif
-                // On attend juste de recevoir le plateau du serveur
+                // Afficher le plateau
+                afficher_plateau2(plateau);
 
                 // Comparer les deux pseudos pour savoir si c'est notre tour
                 if (strcmp(nom, pseudo) == 0) {
@@ -309,7 +292,8 @@ static void app(const char *address, const char *name) {
                         first = 6;
                         last = 11;
                     }
-                    printf("It's your turn! Please enter a number between %d and %d:\n", first, last);
+                    printf("\n");
+                    printf("It's your turn player %d ! Please enter a number between %d and %d:\n", joueur, first, last);
                     char move[BUF_SIZE];
                     while (1) {
                         if (fgets(move, BUF_SIZE, stdin) != NULL) {
@@ -320,7 +304,7 @@ static void app(const char *address, const char *name) {
                                 write_server(sock, buffer);
                                 break;
                             } else {
-                                printf("Invalid move. Please enter a number between 0 and 5:\n");
+                                printf("It's your turn! Please enter a number between %d and %d:\n", first, last);
                             }
                         }
                     }
@@ -346,12 +330,18 @@ static void app(const char *address, const char *name) {
                     }
                 }
             }
+            else if(strncmp(buffer, "Game over", 9) == 0) {
+                printf("\033[1;31m%s\033[0m\n", buffer); // Red for win messages
+                partie_en_cours = false;
+            }
             else {
                 printf("\033[1;32m%s\033[0m\n", buffer); // Green for normal messages
             }
             
             if (partie_en_cours) {
                 printf("\033[1;33mWaiting for the other player...\033[0m\n");
+                // Bloquer l'entrée utilisateur pendant que l'autre joueur joue
+                FD_CLR(STDIN_FILENO, &rdfs);
             }
             else{
                 print_menu();

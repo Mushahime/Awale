@@ -20,6 +20,7 @@ void initialiser_plateau(JeuAwale *jeu);
 
 // Fonction pour afficher l'état actuel du plateau
 void afficher_plateau(JeuAwale *jeu);
+void afficher_plateau2(int plateau[TAILLE_PLATEAU]);
 
 // Fonction pour jouer un coup dans le jeu d'Awalé
 bool jouer_coup(JeuAwale *jeu, int joueur, int case_depart);

@@ -2,6 +2,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
+#include <time.h>
 
 #include "../awale.h"
 #include "server2.h"
@@ -144,7 +145,9 @@ static void handle_awale_response(Client *clients, int actual, int client_index,
         JeuAwale jeu;
         initialiser_plateau(&jeu);
         nouvelle_partie.jeu = jeu;
+        srand(time(NULL));
         nouvelle_partie.tour = rand() % 2 + 1;
+        printf("Debug - Tour initial : %d\n", nouvelle_partie.tour);  // Debug
         nouvelle_partie.partie_en_cours = true;
         nouvelle_partie.awale_challenge = awale_challenges[challenge_index];
         
@@ -188,9 +191,9 @@ static void handle_awale_response(Client *clients, int actual, int client_index,
                strcmp(clients[i].name, challenged) == 0) {
                 write_client(clients[i].sock, start_msg);
                 #ifdef WIN32
-                    Sleep(5000); // Windows
+                    Sleep(2000); // Windows
                 #else
-                    sleep(5); // Unix
+                    sleep(2); // Unix
                 #endif
                 write_client(clients[i].sock, plateau_initial);
             }
