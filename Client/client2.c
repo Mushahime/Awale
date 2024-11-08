@@ -8,6 +8,10 @@
 #include "client2.h"
 #include "../awale.h"
 
+//variable global pour le pseudo
+char pseudo[PSEUDO_MAX_LENGTH];
+bool partie_en_cours = false;
+
 static void clear_screen(void) {
 #ifdef WIN32
     system("cls");
@@ -70,6 +74,7 @@ static int get_valid_pseudo(SOCKET sock) {
         
         if (strcmp(response, "connected") == 0) {
             printf("\033[1;32mConnected successfully!\033[0m\n");
+            strncpy(pseudo, buffer, PSEUDO_MAX_LENGTH);
             return 1;
         } else if (strcmp(response, "pseudo_exists") == 0) {
             printf("\033[1;31mThis nickname is already taken. Please choose another one.\033[0m\n");
@@ -239,15 +244,36 @@ static void app(const char *address, const char *name) {
             }
             else if(strncmp(buffer, "INIT_AWALE:", 11) == 0) {
                 // Parse le message initial
+                partie_en_cours = true;
                 int plateau[TAILLE_PLATEAU];
-                char *token = strtok((char *)buffer + 11, ":");
+                int joueur;
+                char nom[PSEUDO_MAX_LENGTH];
+
+                char *msg = strdup(buffer + 11);  // Copie le message sans le préfixe
+                char *token = strtok(msg, ":");
                 int i = 0;
+
+
                 
                 // Récupère l'état du plateau
                 while(token != NULL && i < TAILLE_PLATEAU) {
                     plateau[i++] = atoi(token);
                     token = strtok(NULL, ":");
                 }
+
+                // Récupérer le pseudo
+                if (token != NULL) {
+                    strncpy(nom, token, PSEUDO_MAX_LENGTH - 1);
+                    nom[PSEUDO_MAX_LENGTH - 1] = '\0';
+                    token = strtok(NULL, ":");
+                }
+
+                // Récupérer le numéro du joueur
+                if (token != NULL) {
+                    joueur = atoi(token);
+                }
+
+                free(msg);  // Libérer la mémoire allouée
                 
                 
                 // Affiche le plateau reçu
@@ -262,7 +288,8 @@ static void app(const char *address, const char *name) {
                 printf("Cases :   0   1   2   3   4   5\n");
                 printf("Joueur 1\n");
                 
-                printf("\n\033[1;33mC'est le tour du joueur %s\033[0m\n", token);
+                printf("\n\033[1;33mC'est le tour du joueur %s (joueur %d)\033[0m\n", nom, joueur);
+                printf("ps: %s\n", pseudo);
 
                 #ifdef WIN32
                     Sleep(5000); // Windows
@@ -271,8 +298,33 @@ static void app(const char *address, const char *name) {
                 #endif
                 // On attend juste de recevoir le plateau du serveur
 
-                // Pour l'instant on reste ici, on verra plus tard
-                exit(EXIT_SUCCESS);
+                // Comparer les deux pseudos pour savoir si c'est notre tour
+                if (strcmp(nom, pseudo) == 0) {
+                    int first;
+                    int last;
+                    if (joueur == 1) {
+                        first = 0;
+                        last = 5;
+                    } else {
+                        first = 6;
+                        last = 11;
+                    }
+                    printf("It's your turn! Please enter a number between %d and %d:\n", first, last);
+                    char move[BUF_SIZE];
+                    while (1) {
+                        if (fgets(move, BUF_SIZE, stdin) != NULL) {
+                            move[strcspn(move, "\n")] = 0; // Remove newline
+                            int move_int = atoi(move);
+                            if (move_int >= first && move_int <= last) {
+                                snprintf(buffer, BUF_SIZE, "awale_move:%d", move_int);
+                                write_server(sock, buffer);
+                                break;
+                            } else {
+                                printf("Invalid move. Please enter a number between 0 and 5:\n");
+                            }
+                        }
+                    }
+                }
             }
             else if(strstr(buffer, "fight") != NULL) {
                 printf("\033[1;31m%s\033[0m\n", buffer); // Red for fight messages
@@ -298,7 +350,12 @@ static void app(const char *address, const char *name) {
                 printf("\033[1;32m%s\033[0m\n", buffer); // Green for normal messages
             }
             
-            print_menu();
+            if (partie_en_cours) {
+                printf("\033[1;33mWaiting for the other player...\033[0m\n");
+            }
+            else{
+                print_menu();
+            }
         }
     }
     

@@ -53,7 +53,7 @@ typedef struct {
     char name[BUF_SIZE];
     char bio[MAX_BIO_LENGTH];
     int has_bio;
-    PartieAwale *partie_courante;  // Nouveau: pointeur vers la partie en cours
+    int partie_index;  // Index de la partie en cours (-1 si aucune)
 } Client;
 
 
@@ -83,6 +83,8 @@ static int check_pseudo(Client *clients, int actual, const char *pseudo);
 static void handle_bio_command(Client *clients, int actual, int client_index, const char *buffer);
 static void handle_private_message(Client *clients, int actual, int sender_index, const char *buffer);
 static void list_connected_clients(Client *clients, int actual, int requester_index);
-static void handle_awale_command(Client *clients, int actual, int client_index, const char *buffer);
+static void handle_awale_response(Client *clients, int actual, int client_index, const char *response);
+static void handle_awale_challenge(Client *clients, int actual, int client_index, const char *target_pseudo);
+static void handle_awale_move(Client *clients, int actual, int client_index, const char *move);
 
 #endif 
