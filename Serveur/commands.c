@@ -509,3 +509,23 @@ void clearSpectators(PartieAwale *PartieAwale)
 {
     free(PartieAwale->spectators);
 }
+
+void stream_move(SOCKET sock, const char *buffer, PartieAwale *partieAwale)
+{
+    char message[BUF_SIZE];
+    Client *player1 = findClientByPseudo(partieAwale->spectators, partieAwale->nbSpectators, partieAwale->awale_challenge.challenged);
+    Client *player2 = findClientByPseudo(partieAwale->spectators, partieAwale->nbSpectators, partieAwale->awale_challenge.challenger);
+    for (int i = 0; i < partieAwale->nbSpectators; i++)
+    {
+
+        if (player1->sock == partieAwale->spectators[i].sock || player2-sock==partieAwale->spectators[i].sock )
+        {
+            continue;
+        }
+        memset(message, 0, sizeof(message));
+        strncpy(message, buffer, BUF_SIZE - 1);
+        message[BUF_SIZE - 1] = '\0';
+        // Send the message to the spectators
+        write_client(partieAwale->spectators[i].sock, message);
+    }
+}

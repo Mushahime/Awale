@@ -37,7 +37,7 @@ void handle_awale_move(Client *clients, int actual, int client_index, const char
 void handle_awale_list(Client *clients, int actual, int client_index);
 void handle_bio_command(Client *clients, int actual, int client_index, const char *buffer);
 void handle_private_message(Client *clients, int actual, int sender_index, const char *buffer);
-void stream_game(PartieAwale *PartieAwale, int sender_index, const char *name);
+void stream_move(SOCKET sock, const char *buffer, PartieAwale *partieAwale);
 void addSpectator(PartieAwale *partieAwale, Client newSpectator);
 void initSpectators(Client *clients, int actual, PartieAwale *partieAwale);
 Client *findClientByPseudo(Client *clients, int actual, const char *name);
