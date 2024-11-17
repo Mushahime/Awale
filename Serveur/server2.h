@@ -1,43 +1,47 @@
-// server.h
+// server2.h
 #ifndef SERVER_H
 #define SERVER_H
 
+#ifdef WIN32
+#include <winsock2.h>
+#elif defined (__linux__) || defined(linux) || defined(__linux)
+#include <sys/types.h>
+#include <sys/socket.h>
 #include <netinet/in.h>
+#include <ctype.h>
+#include <arpa/inet.h>
+#include <unistd.h> /* close */
+#include <netdb.h> /* gethostbyname */
+#include <pthread.h>
+#include "utilsServer.h"
+#include "../awale.h"
+#define INVALID_SOCKET -1
+#define SOCKET_ERROR -1
+#define closesocket(s) close(s)
+#define INVALID_MOVE_FAMINE "The selected case would cause famine for your opponent"
+#define INVALID_MOVE_EMPTY "The selected case is empty"
 
-#define BUF_SIZE 2048
-#define MAX_CLIENTS 100
-#define PORT 12346      // Port number
+typedef int SOCKET;
+typedef struct sockaddr_in SOCKADDR_IN;
+typedef struct sockaddr SOCKADDR;
+typedef struct in_addr IN_ADDR;
+#else
+#error not defined for this platform
+#endif
 
-// Client states
-#define STATE_IDLE 0
-#define STATE_WAITING_FOR_ACCEPTANCE 1
-#define STATE_BEING_INVITED 2
-#define STATE_PLAYING 3
 
-typedef struct Client {
-    int sock;               // Client's socket
-    char name[BUF_SIZE];    // Client's name
-    int opponent_sock;      // Opponent's socket
-    int state;              // Client's state
-} Client;
+static int check_pseudo(Client *clients, int actual, const char *pseudo);
+static void list_connected_clients(Client *clients, int actual, int requester_index);
+static int find_challenge(const char *name);
+static void add_challenge(const char *challenger, const char *challenged);
+static void remove_challenge(int index);
+static void handle_awale_response(Client *clients, int actual, int client_index, const char *response);
+static void handle_awale_challenge(Client *clients, int actual, int client_index, const char *target_pseudo);
+static void handle_awale_move(Client *clients, int actual, int client_index, const char *move);
+static void handle_awale_list(Client *clients, int actual, int client_index);
+static void handle_bio_command(Client *clients, int actual, int client_index, const char *buffer);
+static void handle_private_message(Client *clients, int actual, int sender_index, const char *buffer);
 
-void init_server(void);
-void close_server(void);
-void run_server(void);
-int init_connection(void);
-void close_connection(int sock);
-int read_from_client(int sock, char *buffer);
-void write_to_client(int sock, const char *buffer);
+static void app(void);
 
-void handle_client_message(Client *clients, Client *sender, int *actual, const char *buffer);
-void invite_player(Client *clients, Client *sender, int actual, const char *opponent_name);
-void accept_invitation(Client *clients, Client *sender, int actual);
-void refuse_invitation(Client *clients, Client *sender, int actual);
-void start_game(Client *player1, Client *player2);
-int random_choice();
-Client *find_client_by_name(Client *clients, int actual, const char *name);
-Client *find_client_by_sock(Client *clients, int actual, int sock);
-void remove_client(Client *clients, int to_remove, int *actual);
-void send_online_players(Client *clients, Client *sender, int actual);
-
-#endif // SERVER_H
+#endif 
