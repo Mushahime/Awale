@@ -139,6 +139,8 @@ void handle_awale_response(Client *clients, int actual, int client_index, const 
 
         // Créer et initialiser la partie
         PartieAwale nouvelle_partie;
+        nouvelle_partie.nbSpectators = 2;
+
         JeuAwale jeu;
         initialiser_plateau(&jeu);
         nouvelle_partie.jeu = jeu;
@@ -444,4 +446,66 @@ void handle_awale_list(Client *clients, int actual, int client_index)
     }
 
     write_client(clients[client_index].sock, list);
+}
+
+void addSpectator(PartieAwale *partieAwale, Client newSpectator)
+{
+    int current_size = partieAwale->nbSpectators + 1;
+    int *temp = realloc(partieAwale->spectators, current_size * sizeof(int)); // Reallocate memory
+    if (temp == NULL)
+    {
+        perror("Failed to reallocate memory");
+        free(partieAwale->spectators); // Free the old memory to avoid memory leaks
+        exit(EXIT_FAILURE);
+    }
+    partieAwale->spectators = temp;
+    partieAwale->spectators[current_size - 1] = newSpectator;
+    partieAwale->nbSpectators += 1;
+}
+
+void initSpectators(Client *clients, int actual, PartieAwale *partieAwale) // remember to free this memory
+{
+    int initialSize = partieAwale->nbSpectators;
+    partieAwale = malloc(initialSize * sizeof(Client));
+    Client *player1 = findClientByPseudo(clients, actual, partieAwale->awale_challenge.challenged);
+    if (player1 != NULL)
+    {
+        partieAwale->spectators[0] = player1;
+    }
+    Client *player2 = findClientByPseudo(clients, actual, partieAwale->awale_challenge.challenger);
+    if (player2 != NULL)
+    {
+        partieAwale->spectators[1] = player2;
+    }
+}
+
+Client *findClientByPseudo(Client *clients, int actual, const char *name)
+{
+    if (clients == NULL || name == NULL)
+    {
+        return NULL;
+    }
+
+    for (int i = 0; i < actual; i++)
+    {
+        if (!strcmp(name, clients[i].name))
+        {
+            return &clients[i]; // Return pointer to the matching client
+        }
+    }
+
+    return NULL;
+}
+void allowAll(Client *clients, int actual, PartieAwale *partieAwale)
+{
+    for (int i = 0; i < actual; i++)
+    {
+        partieAwale->spectators[i] = clients[i];
+    }
+    partieAwale->nbSpectators = actual;
+}
+
+void clearSpectators(PartieAwale *PartieAwale)
+{
+    free(PartieAwale->spectators);
 }

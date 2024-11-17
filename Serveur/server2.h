@@ -4,14 +4,14 @@
 
 #ifdef WIN32
 #include <winsock2.h>
-#elif defined (__linux__) || defined(linux) || defined(__linux)
+#elif defined(__linux__) || defined(linux) || defined(__linux)
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <ctype.h>
 #include <arpa/inet.h>
 #include <unistd.h> /* close */
-#include <netdb.h> /* gethostbyname */
+#include <netdb.h>  /* gethostbyname */
 #include <pthread.h>
 #include "utilsServer.h"
 #include "../awale.h"
@@ -29,7 +29,6 @@ typedef struct in_addr IN_ADDR;
 #error not defined for this platform
 #endif
 
-
 static int check_pseudo(Client *clients, int actual, const char *pseudo);
 static void list_connected_clients(Client *clients, int actual, int requester_index);
 static int find_challenge(const char *name);
@@ -44,4 +43,4 @@ static void handle_private_message(Client *clients, int actual, int sender_index
 
 static void app(void);
 
-#endif 
+#endif

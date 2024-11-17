@@ -37,8 +37,13 @@ void handle_awale_move(Client *clients, int actual, int client_index, const char
 void handle_awale_list(Client *clients, int actual, int client_index);
 void handle_bio_command(Client *clients, int actual, int client_index, const char *buffer);
 void handle_private_message(Client *clients, int actual, int sender_index, const char *buffer);
-void stream_game(Client*client , int sender_index ,const char * name);
-/* 
+void stream_game(PartieAwale *PartieAwale, int sender_index, const char *name);
+void addSpectator(PartieAwale *partieAwale, Client newSpectator);
+void initSpectators(Client *clients, int actual, PartieAwale *partieAwale);
+Client *findClientByPseudo(Client *clients, int actual, const char *name);
+void allowAll(Client *clients, int actual, PartieAwale *partieAwale);
+void clearSpectators(PartieAwale *PartieAwale);
+/*
 1-watch an awale game as an observator // ask the server to swend the board and who is playing
 2-make game private // modify the game struct and add to it a list of clients that have permission
 3-
@@ -46,4 +51,3 @@ void stream_game(Client*client , int sender_index ,const char * name);
 */
 
 #endif
-

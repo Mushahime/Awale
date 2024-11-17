@@ -48,7 +48,10 @@ typedef struct
 {
     AwaleChallenge awale_challenge;
     JeuAwale jeu;
-    int tour; // 1 for player1, 2 for player2
+    int tour;   // 1 for player1, 2 for player2
+    bool prive; // true if the game is private
+    Client *spectators;
+    int nbSpectators;
 } PartieAwale;
 
 // Client structure representing each connected client
