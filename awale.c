@@ -235,8 +235,22 @@ bool nourrir_adversaire_possible(JeuAwale *jeu, int joueur)
 
 bool verifier_fin_partie(JeuAwale *jeu)
 {
-    if (jeu->score_joueur1 >= 50 || jeu->score_joueur2 >= 50)
+    // Vérifier si un joueur a atteint ou dépassé 24 points
+    if (jeu->score_joueur1 >= 24 || jeu->score_joueur2 >= 24)
     {
+        // Ramasser toutes les graines restantes
+        for (int i = 0; i < TAILLE_PLATEAU; i++)
+        {
+            if (i < 6)
+            {
+                jeu->score_joueur1 += jeu->plateau[i];
+            }
+            else
+            {
+                jeu->score_joueur2 += jeu->plateau[i];
+            }
+            jeu->plateau[i] = 0;
+        }
         return true;
     }
 
@@ -256,9 +270,9 @@ bool verifier_fin_partie(JeuAwale *jeu)
 
     if (joueur1_vide || joueur2_vide)
     {
-        // Vérification si l'adversaire peut être nourri
         if (!nourrir_adversaire_possible(jeu, joueur1_vide ? 2 : 1))
         {
+            // Ramasser toutes les graines restantes
             for (int i = 0; i < TAILLE_PLATEAU; i++)
             {
                 if (jeu->plateau[i] > 0)

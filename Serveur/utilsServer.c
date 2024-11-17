@@ -130,41 +130,37 @@ void clear_clients(Client *clients, int actual)
 
 void remove_client(Client *clients, int to_remove, int *actual)
 {
+    // Si le client était dans une partie
     if (clients[to_remove].partie_index != -1)
     {
         int partie_index = clients[to_remove].partie_index;
+        PartieAwale *partie = &awale_parties[partie_index];
+        char msg[BUF_SIZE];
+        char *disconnected_player = clients[to_remove].name;
 
+        // Trouver l'autre joueur et lui envoyer la notification
         for (int i = 0; i < *actual; i++)
         {
             if (i != to_remove && clients[i].partie_index == partie_index)
             {
-                char msg[BUF_SIZE];
-                char buffer[BUF_SIZE];
-                snprintf(msg, BUF_SIZE, "Game over! %s has left\n", clients[to_remove].name);
-                write_client(clients[i].sock, msg);
-
-                fd_set rdfs;
-                struct timeval tv;
-                tv.tv_sec = 5; 
-                tv.tv_usec = 0;
-
-                FD_ZERO(&rdfs);
-                FD_SET(clients[i].sock, &rdfs);
-
-                if (select(clients[i].sock + 1, &rdfs, NULL, NULL, &tv) > 0)
+                // Vérifier si c'est bien l'autre joueur de la partie
+                if (strcmp(clients[i].name, partie->awale_challenge.challenger) == 0 ||
+                    strcmp(clients[i].name, partie->awale_challenge.challenged) == 0)
                 {
-                    read_client(clients[i].sock, buffer);
+                    // Envoyer le message de fin de partie en rouge
+                    snprintf(msg, BUF_SIZE, "\033[1;31mGame over! %s has left the game\033[0m\n", 
+                            disconnected_player);
+                    write_client(clients[i].sock, msg);
+                    clients[i].partie_index = -1;
                 }
-                clients[i].partie_index = -1;
-                break;
             }
         }
 
-        printf("Removing partie %d, total parties: %d\n", partie_index, partie_count);
+        // Supprimer la partie
         remove_partie(partie_index, clients);
-        printf("Partie removed, total parties: %d\n", partie_count);
     }
 
+    // Déplacer le client à supprimer avant d'envoyer le message
     memmove(clients + to_remove, clients + to_remove + 1, (*actual - to_remove - 1) * sizeof(Client));
     (*actual)--;
 }

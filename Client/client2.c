@@ -340,77 +340,52 @@ void handle_server_message(SOCKET sock, char *buffer)
     // Clear the current line and move cursor up
     printf("\r\033[K\033[A\033[K");
 
-    bool should_display_menu = false;  // Par défaut, ne pas afficher le menu
+    printf("le buffer est %s\n", buffer);
+
+    bool should_display_menu = false;
 
     if (strstr(buffer, "[Private") != NULL)
     {
         process_private_message(buffer);
         should_display_menu = !partie_en_cours;
     }
-    else if (strstr(buffer, "joined") != NULL || strstr(buffer, "disconnected") != NULL)
+    /*else if (strstr(buffer, "disconnected") != NULL || strstr(buffer, "joined") != NULL)
     {
         process_system_message(buffer);
-        
-        if (partie_en_cours && strstr(buffer, "disconnected"))
-        {
-            char disconnected_name[PSEUDO_MAX_LENGTH];
-            int len = strcspn(buffer, " ");
-            if (len < PSEUDO_MAX_LENGTH)
-            {
-                strncpy(disconnected_name, buffer, len);
-                disconnected_name[len] = '\0';
-                
-                if (partie_en_cours)
-                {
-                    partie_en_cours = false;
-                    // On affichera le menu après tous les messages liés à la déconnexion
-                }
-            }
-        }
-        // Ne pas afficher le menu après un message de déconnexion
-        should_display_menu = !strstr(buffer, "disconnected!");
-    }
+        should_display_menu = !partie_en_cours;
+    }*/
     else if (strstr(buffer, "[Challenge") != NULL)
     {
         process_challenge_message(buffer);
-        // Ne pas afficher le menu si une partie va commencer
-        should_display_menu = false;
     }
     else if (strncmp(buffer, "AWALE:", 6) == 0)
     {
         process_awale_message(sock, buffer + 6);
-        should_display_menu = false;  // Ne pas afficher le menu pendant une partie
     }
     else if (strncmp(buffer, "ERROR:", 6) == 0)
     {
         process_error_message(sock, buffer);
-        should_display_menu = !partie_en_cours;
     }
     else if (strstr(buffer, "fight") != NULL)
     {
         process_fight_message(sock, buffer);
-        should_display_menu = false;  // Ne pas afficher le menu pendant un challenge
     }
-    else if (strncmp(buffer, "Game over", 9) == 0)
+    else if (strstr(buffer, "over") != NULL)
     {
         process_game_over_message(sock, buffer);
         partie_en_cours = false;
-        should_display_menu = true;  // Afficher le menu après la fin de partie
+        should_display_menu = true;
     }
     else
     {
-        printf("\033[1;32m%s\033[0m\n", buffer); // Green for normal messages
+        printf("\033[1;32m%s\033[0m\n", buffer);
         should_display_menu = !partie_en_cours;
     }
 
-    // N'afficher le menu que si nécessaire
-    if (should_display_menu && !partie_en_cours)
+    if (should_display_menu)
     {
         display_menu();
-        fflush(stdout);  // S'assurer que tout est affiché
-    }
-    else{
-        //TODO
+        fflush(stdout);
     }
 }
 
@@ -625,9 +600,9 @@ void process_fight_message(SOCKET sock, char *buffer)
  */
 void process_game_over_message(SOCKET sock, char *buffer)
 {
-    printf("\033[1;31m%s\033[0m\n", buffer); // Red for game over messages
+    printf("\033[1;33m%s\033[0m\n", buffer); // Jaune pour les messages de fin de partie
     partie_en_cours = false;
-    write_server(sock, "ack_gameover");
+    //display_menu(); // Afficher le menu après la fin de partie
 }
 
 

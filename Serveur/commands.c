@@ -346,8 +346,18 @@ void handle_awale_move(Client *clients, int actual, int client_index, const char
         if (verifier_fin_partie(jeu))
         {
             char end_msg[BUF_SIZE];
-            snprintf(end_msg, BUF_SIZE, "Game over! %s wins!\n",
-                     (jeu->score_joueur1 > jeu->score_joueur2) ? partie->awale_challenge.challenger : partie->awale_challenge.challenged);
+            if (jeu->score_joueur1 == jeu->score_joueur2)
+            {
+                snprintf(end_msg, BUF_SIZE, "Game over! It's a draw! Final score: %d-%d\n",
+                        jeu->score_joueur1, jeu->score_joueur2);
+            }
+            else
+            {
+                snprintf(end_msg, BUF_SIZE, "Game over! %s wins with a score of %d-%d!\n",
+                        (jeu->score_joueur1 > jeu->score_joueur2) ? 
+                        partie->awale_challenge.challenger : partie->awale_challenge.challenged,
+                        jeu->score_joueur1, jeu->score_joueur2);
+            }
 
             // Réinitialiser les indices de partie pour les deux joueurs
             for (int i = 0; i < actual; i++)
@@ -359,16 +369,19 @@ void handle_awale_move(Client *clients, int actual, int client_index, const char
                     write_client(clients[i].sock, end_msg);
                 }
             }
-            // Libérez challenge
+
+            // Libérer le challenge
             int partie_challenge_index = find_challenge(partie->awale_challenge.challenger);
             if (partie_challenge_index != -1)
             {
                 remove_challenge(partie_challenge_index);
             }
+
             // Libérer la partie
             remove_partie(partie_index, clients);
             return;
         }
+
         else
         {
             // Envoyer le plateau mis à jour

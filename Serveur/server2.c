@@ -122,7 +122,7 @@ static void app(void)
                     {
                         closesocket(clients[i].sock);
                         remove_client(clients, i, &actual);
-
+                        sleep(2);
                         strncpy(buffer, client.name, BUF_SIZE - 1);
                         strncat(buffer, " disconnected!\n", BUF_SIZE - strlen(buffer) - 1);
                         send_message_to_all_clients(clients, client, actual, buffer, 1);
