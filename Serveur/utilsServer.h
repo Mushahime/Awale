@@ -13,8 +13,9 @@
 #include <stdbool.h>
 #include <pthread.h>
 #include <stdlib.h>
-
+#include <string.h>
 #include "../awale.h"
+
 #define INVALID_SOCKET -1
 #define SOCKET_ERROR -1
 #define closesocket(s) close(s)
@@ -33,70 +34,52 @@ typedef struct in_addr IN_ADDR;
 #define MAX_BIO_LENGTH 1000
 #define PSEUDO_MAX_LENGTH 50
 #define PSEUDO_MIN_LENGTH 2
+#define MAX_CHALLENGES 25
+#define MAX_PARTIES 25
 
 #define MUTEX_TIMEOUT_SEC 10
 
-// Awale Challenge structure
-typedef struct
-{
+typedef struct {
     char challenger[PSEUDO_MAX_LENGTH];
     char challenged[PSEUDO_MAX_LENGTH];
 } AwaleChallenge;
 
-
-// Client structure representing each connected client
-typedef struct
-{
+typedef struct {
     SOCKET sock;
     char name[BUF_SIZE];
     char bio[MAX_BIO_LENGTH];
     int has_bio;
-    int partie_index; // Current game index (-1 if none)
+    int partie_index;
 } Client;
 
-// Partie Awale structure, representing an Awale game instance
-typedef struct
-{
+typedef struct {
     AwaleChallenge awale_challenge;
     JeuAwale jeu;
-    int tour;   // 1 for player1, 2 for player2
-    bool prive; // true if the game is private
+    int tour;
+    bool prive;
     Client *spectators;
     int nbSpectators;
 } PartieAwale;
 
+// Déclaration des variables globales
 extern pthread_mutex_t clients_mutex;
 extern pthread_mutex_t socket_mutex;
+extern AwaleChallenge awale_challenges[MAX_CHALLENGES];
+extern int challenge_count;
+extern PartieAwale awale_parties[MAX_PARTIES];
+extern int partie_count;
 
-#define MAX_CHALLENGES 25
-#define MAX_PARTIES 25
-
-static AwaleChallenge awale_challenges[MAX_CHALLENGES];
-static int challenge_count = 0;
-static PartieAwale awale_parties[MAX_PARTIES];
-static int partie_count = 0;
-
-#ifdef __cplusplus
-extern "C"
-{
-#endif
-
-    // Function prototypes for connection and client handling
-    void init(void);
-    void end(void);
-    int init_connection(void);
-    void end_connection(int sock);
-    void remove_partie(int index);
-    Client *findClientByPseudo(Client *clients, int actual, const char *name);
-
-    void clear_clients(Client *clients, int actual);
-    void remove_client(Client *clients, int to_remove, int *actual);
-    int read_client(SOCKET sock, char *buffer);
-    void write_client(SOCKET sock, const char *buffer);
-    void send_message_to_all_clients(Client *clients, Client sender, int actual, const char *buffer, char from_server);
-
-#ifdef __cplusplus
-}
-#endif
+// Prototypes de fonctions
+void init(void);
+void end(void);
+int init_connection(void);
+void end_connection(int sock);
+void remove_partie(int index, Client *clients);
+Client *findClientByPseudo(Client *clients, int actual, const char *name);
+void clear_clients(Client *clients, int actual);
+void remove_client(Client *clients, int to_remove, int *actual);
+int read_client(SOCKET sock, char *buffer);
+void write_client(SOCKET sock, const char *buffer);
+void send_message_to_all_clients(Client *clients, Client sender, int actual, const char *buffer, char from_server);
 
 #endif /* UTILS_H */

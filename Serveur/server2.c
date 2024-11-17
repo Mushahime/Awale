@@ -8,8 +8,7 @@
 #include "server2.h"
 #include <sys/select.h>
 #include "utilsServer.h"
-pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t socket_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 
 static void app(void)
 {
@@ -173,6 +172,7 @@ static void app(void)
     clear_clients(clients, actual);
     end_connection(sock);
 }
+
 
 int main(int argc, char **argv)
 {

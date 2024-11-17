@@ -31,6 +31,43 @@ int check_pseudo(Client *clients, int actual, const char *pseudo)
     return 1;
 }
 
+void clean_invalid_parties(Client *clients, int actual)
+{
+    for (int i = partie_count - 1; i >= 0; i--)
+    {
+        bool challenger_present = false;
+        bool challenged_present = false;
+        PartieAwale *partie = &awale_parties[i];
+        
+        for (int j = 0; j < actual; j++)
+        {
+            if (strcmp(clients[j].name, partie->awale_challenge.challenger) == 0)
+            {
+                challenger_present = true;
+                if (clients[j].partie_index == -1)
+                {
+                    remove_partie(i, clients);
+                    continue;
+                }
+            }
+            if (strcmp(clients[j].name, partie->awale_challenge.challenged) == 0)
+            {
+                challenged_present = true;
+                if (clients[j].partie_index == -1)
+                {
+                    remove_partie(i, clients);
+                    continue;
+                }
+            }
+        }
+        
+        if (!challenger_present || !challenged_present)
+        {
+            remove_partie(i, clients);
+        }
+    }
+}
+
 void handle_bio_command(Client *clients, int actual, int client_index, const char *buffer)
 {
     char response[BUF_SIZE];
@@ -138,7 +175,7 @@ void handle_awale_response(Client *clients, int actual, int client_index, const 
                  challenger, challenged);
 
         // Créer et initialiser la partie
-        PartieAwale nouvelle_partie;
+        PartieAwale nouvelle_partie = {0};
         nouvelle_partie.nbSpectators = 2;
 
         JeuAwale jeu;
@@ -201,9 +238,9 @@ void handle_awale_response(Client *clients, int actual, int client_index, const 
             {
                 write_client(clients[i].sock, start_msg);
 #ifdef WIN32
-                Sleep(2000); // Windows
+                Sleep(1000); // Windows
 #else
-                sleep(2); // Unix
+                sleep(1); // Unix
 #endif
                 write_client(clients[i].sock, plateau_initial);
             }
@@ -329,7 +366,8 @@ void handle_awale_move(Client *clients, int actual, int client_index, const char
                 remove_challenge(partie_challenge_index);
             }
             // Libérer la partie
-            remove_partie(partie_index);
+            remove_partie(partie_index, clients);
+            return;
         }
         else
         {
@@ -429,7 +467,10 @@ void list_connected_clients(Client *clients, int actual, int requester_index)
 
 void handle_awale_list(Client *clients, int actual, int client_index)
 {
+    //clean_invalid_parties(clients, actual);
     char list[BUF_SIZE * MAX_PARTIES] = "Games in progress:\n";
+
+    printf("partie_count cote awale list: %d\n", partie_count);
 
     for (int i = 0; i < partie_count; i++)
     {

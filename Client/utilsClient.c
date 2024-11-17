@@ -1,4 +1,5 @@
 #include "utilsClient.h"
+#include <string.h>
  void init(void) {
 #ifdef WIN32
     WSADATA wsa;
@@ -72,19 +73,4 @@
 #else
     system("clear");
 #endif
-}
-
- void print_menu(void) {
-    printf("\n\033[1;36m=== Chat Menu ===\033[0m\n");
-    printf("1. Send message to all\n");
-    printf("2. Send private message\n");
-    printf("3. List connected users\n");
-    printf("4. Bio options\n");
-    printf("5. Play awale vs someone\n");
-    printf("6. ALl games in progression\n");
-    printf("7. Clear screen\n");
-    printf("8. Quit\n");
-    printf("\n");
-    printf("\nChoice: ");
-    fflush(stdout);
 }

@@ -40,7 +40,6 @@ int init_connection(const char *address);
 void end_connection(int sock);
 int read_server(SOCKET sock, char *buffer);
 void write_server(SOCKET sock, const char *buffer);
-void print_menu(void);
 void clear_screen(void);
 
 #endif /* guard */

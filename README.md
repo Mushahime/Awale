@@ -12,6 +12,7 @@ warning : listen socket is like a FIFO for the connection and pseudo is unique
 - variables awale_challenges à enlever
 - voir pour code 0 (à discuter)
 - répétition du code
+- mettre le port
 
 5 -> mode observateur
 6 -> chat (mp pendant la game) + switch case pendant le jeu

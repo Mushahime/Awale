@@ -1,4 +1,12 @@
 #include "utilsServer.h"
+
+pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t socket_mutex = PTHREAD_MUTEX_INITIALIZER;
+AwaleChallenge awale_challenges[MAX_CHALLENGES];
+int challenge_count = 0;
+PartieAwale awale_parties[MAX_PARTIES];
+int partie_count = 0;
+
 #include "server2.h"
 #include <errno.h>
 #include <sys/select.h>
@@ -83,13 +91,31 @@ void write_client(SOCKET sock, const char *buffer)
     }
 }
 
-void remove_partie(int index)
+void remove_partie(int index, Client *clients)
 {
     if (index >= 0 && index < partie_count)
     {
+        if (awale_parties[index].spectators != NULL)
+        {
+            free(awale_parties[index].spectators);
+            awale_parties[index].spectators = NULL;
+        }
+
         memmove(&awale_parties[index], &awale_parties[index + 1],
                 (partie_count - index - 1) * sizeof(PartieAwale));
+
         partie_count--;
+
+        for (int i = index; i < partie_count; i++)
+        {
+            for (int j = 0; j < MAX_CLIENTS; j++)
+            {
+                if (clients[j].partie_index > index)
+                {
+                    clients[j].partie_index--;
+                }
+            }
+        }
     }
 }
 
@@ -104,12 +130,10 @@ void clear_clients(Client *clients, int actual)
 
 void remove_client(Client *clients, int to_remove, int *actual)
 {
-    // Si le client était dans une partie
     if (clients[to_remove].partie_index != -1)
     {
         int partie_index = clients[to_remove].partie_index;
 
-        // Trouver et notifier l'autre joueur
         for (int i = 0; i < *actual; i++)
         {
             if (i != to_remove && clients[i].partie_index == partie_index)
@@ -119,10 +143,9 @@ void remove_client(Client *clients, int to_remove, int *actual)
                 snprintf(msg, BUF_SIZE, "Game over! %s has left\n", clients[to_remove].name);
                 write_client(clients[i].sock, msg);
 
-                // Attendre l'acquittement avec un select() pour éviter de bloquer indéfiniment
                 fd_set rdfs;
                 struct timeval tv;
-                tv.tv_sec = 5; // timeout de 5 secondes
+                tv.tv_sec = 5; 
                 tv.tv_usec = 0;
 
                 FD_ZERO(&rdfs);
@@ -130,22 +153,16 @@ void remove_client(Client *clients, int to_remove, int *actual)
 
                 if (select(clients[i].sock + 1, &rdfs, NULL, NULL, &tv) > 0)
                 {
-                    int n = read_client(clients[i].sock, buffer);
-                    if (n > 0 && strncmp(buffer, "ack_gameover", 12) == 0)
-                    {
-                        // Acquittement reçu, on peut continuer
-                        clients[i].partie_index = -1;
-                        break;
-                    }
+                    read_client(clients[i].sock, buffer);
                 }
-                // Même si pas d'acquittement, on continue après le timeout
                 clients[i].partie_index = -1;
                 break;
             }
         }
 
-        // Supprimer la partie
-        remove_partie(partie_index);
+        printf("Removing partie %d, total parties: %d\n", partie_index, partie_count);
+        remove_partie(partie_index, clients);
+        printf("Partie removed, total parties: %d\n", partie_count);
     }
 
     memmove(clients + to_remove, clients + to_remove + 1, (*actual - to_remove - 1) * sizeof(Client));
