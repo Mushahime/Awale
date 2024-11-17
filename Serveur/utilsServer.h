@@ -43,16 +43,6 @@ typedef struct
     char challenged[PSEUDO_MAX_LENGTH];
 } AwaleChallenge;
 
-// Partie Awale structure, representing an Awale game instance
-typedef struct
-{
-    AwaleChallenge awale_challenge;
-    JeuAwale jeu;
-    int tour;   // 1 for player1, 2 for player2
-    bool prive; // true if the game is private
-    Client *spectators;
-    int nbSpectators;
-} PartieAwale;
 
 // Client structure representing each connected client
 typedef struct
@@ -63,6 +53,17 @@ typedef struct
     int has_bio;
     int partie_index; // Current game index (-1 if none)
 } Client;
+
+// Partie Awale structure, representing an Awale game instance
+typedef struct
+{
+    AwaleChallenge awale_challenge;
+    JeuAwale jeu;
+    int tour;   // 1 for player1, 2 for player2
+    bool prive; // true if the game is private
+    Client *spectators;
+    int nbSpectators;
+} PartieAwale;
 
 extern pthread_mutex_t clients_mutex;
 extern pthread_mutex_t socket_mutex;
@@ -86,6 +87,7 @@ extern "C"
     int init_connection(void);
     void end_connection(int sock);
     void remove_partie(int index);
+    Client *findClientByPseudo(Client *clients, int actual, const char *name);
 
     void clear_clients(Client *clients, int actual);
     void remove_client(Client *clients, int to_remove, int *actual);

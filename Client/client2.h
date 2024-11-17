@@ -29,19 +29,25 @@ typedef struct in_addr IN_ADDR;
 #define MAX_BIO_LENGTH 1000
 #define PSEUDO_MAX_LENGTH 50
 #define PSEUDO_MIN_LENGTH 2
+// Global Variables
+char pseudo[PSEUDO_MAX_LENGTH];
+bool partie_en_cours = false;
 
-// Function declarations
-static void init(void);
-static void end(void);
-static void app(const char *address, const char *name);
-static int init_connection(const char *address);
-static void end_connection(int sock);
-static int read_server(SOCKET sock, char *buffer);
-static void write_server(SOCKET sock, const char *buffer);
-static void print_menu(void);
-static void handle_user_input(SOCKET sock);
-static void clear_screen(void);
-static void get_multiline_input(char *buffer, int max_size);
-static int get_valid_pseudo(SOCKET sock);
+// Function Prototypes
+void get_multiline_input(char *buffer, int max_size);
+int get_valid_pseudo(SOCKET sock);
+void handle_user_input(SOCKET sock);
+void handle_server_message(SOCKET sock, char *buffer);
+void display_menu();
+void clear_screen_custom();
+void process_awale_message(SOCKET sock, char *msg_body);
+void process_error_message(char *buffer);
+void process_fight_message(SOCKET sock, char *buffer);
+void process_game_over_message(SOCKET sock, char *buffer);
+void process_private_message(char *buffer);
+void process_system_message(char *buffer);
+void process_challenge_message(char *buffer);
+void prompt_for_move(SOCKET sock, int joueur, const char *nom, int plateau[], int score_joueur1, int score_joueur2);
+void prompt_for_new_move( int joueur);
 
 #endif /* guard */

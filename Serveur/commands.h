@@ -40,7 +40,6 @@ void handle_private_message(Client *clients, int actual, int sender_index, const
 void stream_move(SOCKET sock, const char *buffer, PartieAwale *partieAwale);
 void addSpectator(PartieAwale *partieAwale, Client newSpectator);
 void initSpectators(Client *clients, int actual, PartieAwale *partieAwale);
-Client *findClientByPseudo(Client *clients, int actual, const char *name);
 void allowAll(Client *clients, int actual, PartieAwale *partieAwale);
 void clearSpectators(PartieAwale *PartieAwale);
 /*

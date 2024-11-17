@@ -181,3 +181,21 @@ void send_message_to_all_clients(Client *clients, Client sender, int actual, con
         }
     }
 }
+
+Client *findClientByPseudo(Client *clients, int actual, const char *name)
+{
+    if (clients == NULL || name == NULL)
+    {
+        return NULL;
+    }
+
+    for (int i = 0; i < actual; i++)
+    {
+        if (!strcmp(name, clients[i].name))
+        {
+            return &clients[i]; // Return pointer to the matching client
+        }
+    }
+
+    return NULL;
+}

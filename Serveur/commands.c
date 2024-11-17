@@ -470,32 +470,16 @@ void initSpectators(Client *clients, int actual, PartieAwale *partieAwale) // re
     Client *player1 = findClientByPseudo(clients, actual, partieAwale->awale_challenge.challenged);
     if (player1 != NULL)
     {
-        partieAwale->spectators[0] = player1;
+        partieAwale->spectators[0] = *player1;
     }
     Client *player2 = findClientByPseudo(clients, actual, partieAwale->awale_challenge.challenger);
     if (player2 != NULL)
     {
-        partieAwale->spectators[1] = player2;
+        partieAwale->spectators[1] = *player2;
     }
 }
 
-Client *findClientByPseudo(Client *clients, int actual, const char *name)
-{
-    if (clients == NULL || name == NULL)
-    {
-        return NULL;
-    }
 
-    for (int i = 0; i < actual; i++)
-    {
-        if (!strcmp(name, clients[i].name))
-        {
-            return &clients[i]; // Return pointer to the matching client
-        }
-    }
-
-    return NULL;
-}
 void allowAll(Client *clients, int actual, PartieAwale *partieAwale)
 {
     for (int i = 0; i < actual; i++)
