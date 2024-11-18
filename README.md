@@ -13,6 +13,9 @@ warning : listen socket is like a FIFO for the connection and pseudo is unique
 - voir pour code 0 (à discuter)
 - répétition du code
 - (faire des tournois ou autre bonus)
+- taille buffer
+- Commentaire anglais
+- free
 
 Abde :
 5 -> mode observateur
@@ -21,7 +24,6 @@ Abde :
 
 Noam : 
 9 -> sauvegarder une partie avec une suite de char pour ensuite pouvoir lancer cette suite de char et afficher la partie (rajouter un booléen dans la struct)
-Commentaire français
 Mettre le port argc
 
 

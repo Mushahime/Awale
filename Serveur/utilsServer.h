@@ -36,6 +36,7 @@ typedef struct in_addr IN_ADDR;
 #define PSEUDO_MIN_LENGTH 2
 #define MAX_CHALLENGES 25
 #define MAX_PARTIES 25
+#define BUF_SAVE_SIZE 3000
 
 #define MUTEX_TIMEOUT_SEC 10
 
@@ -60,7 +61,7 @@ typedef struct {
     bool prive;
     Client *spectators;
     int nbSpectators;
-    char cout[BUF_SIZE];
+    char cout[BUF_SAVE_SIZE];
     int cout_index;
 } PartieAwale;
 

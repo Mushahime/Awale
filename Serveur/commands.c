@@ -189,9 +189,7 @@ void handle_awale_response(Client *clients, int actual, int client_index, const 
         /*nouvelle_partie.prive = false;
         nouvelle_partie.spectators = malloc(2 * sizeof(Client));*/
         nouvelle_partie.cout[0] = '\0';
-
-        // Sauvegarder la partie dans le tableau
-        awale_parties[partie_count] = nouvelle_partie;
+        nouvelle_partie.cout_index = 0;
 
         // Mettre l'id dans les 2 clients
         for (int i = 0; i < actual; i++)
@@ -221,16 +219,27 @@ void handle_awale_response(Client *clients, int actual, int client_index, const 
         {
             offset += snprintf(plateau_initial + offset, BUF_SIZE - offset, "%s:%d",
                                challenger, nouvelle_partie.tour);
-            // ajouter à cout le nom du joueur qui commence et son numéro
-            snprintf(nouvelle_partie.cout, BUF_SIZE, "%s:%d", challenger, nouvelle_partie.tour);
+
+            if (nouvelle_partie.cout_index <= BUF_SAVE_SIZE - 1)
+            {
+                snprintf(nouvelle_partie.cout, BUF_SAVE_SIZE, "%s:%s:%d", challenger, challenged, nouvelle_partie.tour);
+                nouvelle_partie.cout_index = strlen(nouvelle_partie.cout);
+            }
+
         }
         else
         {
             offset += snprintf(plateau_initial + offset, BUF_SIZE - offset, "%s:%d",
                                challenged, nouvelle_partie.tour);
-            // ajouter à cout le nom du joueur qui commence et son numéro
-            snprintf(nouvelle_partie.cout, BUF_SIZE, "%s:%d", challenged, nouvelle_partie.tour);
+            if (nouvelle_partie.cout_index <= BUF_SAVE_SIZE - 1)
+            {
+                snprintf(nouvelle_partie.cout, BUF_SAVE_SIZE, "%s:%s:%d", challenger, challenged, nouvelle_partie.tour);
+                nouvelle_partie.cout_index = strlen(nouvelle_partie.cout);
+            }
         }
+
+        // Sauvegarder la partie dans le tableau
+        awale_parties[partie_count] = nouvelle_partie;
 
         // Ajouter les scores des joueurs
         offset += snprintf(plateau_initial + offset, BUF_SIZE - offset, ":%d:%d",
@@ -349,7 +358,27 @@ void handle_awale_move(Client *clients, int actual, int client_index, const char
     {   
 
         // Mettre a jour cout
-        snprintf(partie->cout, BUF_SIZE, ":%d", case_depart);
+        if (partie->cout_index <= BUF_SAVE_SIZE - 1)
+        {
+            partie->cout[partie->cout_index] = ':';
+            partie->cout_index++;
+        }
+        if (partie->cout_index <= BUF_SAVE_SIZE - 2)
+        {
+            // Ajouter le coup au cout (attention 10, 11 sonbt des chiffres à 2 chiffres)
+            if (case_depart < 10)
+            {
+                partie->cout[partie->cout_index] = case_depart + '0';
+                partie->cout_index++;
+            }
+            else
+            {
+                partie->cout[partie->cout_index] = '1';
+                partie->cout_index++;
+                partie->cout[partie->cout_index] = (case_depart - 10) + '0';
+                partie->cout_index++;
+            }
+        }
         printf("Debug - Cout : %s\n", partie->cout); // Debug
 
 
@@ -489,12 +518,19 @@ void handle_save(Client *clients, int actual, int client_index, const char *buff
     // Enregistrer la réponse et marquer que ce joueur a répondu
     if (strcmp(save, "yes") == 0)
     {
-        snprintf(response, BUF_SIZE, "Save:%s\n", partie->cout);
+        if (partie->cout_index <= BUF_SAVE_SIZE - 1)
+        {
+            snprintf(response, BUF_SAVE_SIZE, "%s\n", partie->cout);
+        }
+        else
+        {
+            snprintf(response, BUF_SAVE_SIZE, "%d\n", -1);
+        }
         write_client(clients[client_index].sock, response);
     }
     else
     {
-        snprintf(response, BUF_SIZE, "Save:%d\n", -1);
+        snprintf(response, BUF_SAVE_SIZE, "%d\n", -1);
         write_client(clients[client_index].sock, response);
     }
 
@@ -647,7 +683,7 @@ void stream_move(SOCKET sock, const char *buffer, PartieAwale *partieAwale)
     for (int i = 0; i < partieAwale->nbSpectators; i++)
     {
 
-        if (player1->sock == partieAwale->spectators[i].sock || player2-sock==partieAwale->spectators[i].sock )
+        if (player1->sock == partieAwale->spectators[i].sock || player2->sock==partieAwale->spectators[i].sock )
         {
             continue;
         }

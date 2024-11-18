@@ -27,6 +27,7 @@ typedef struct in_addr IN_ADDR;
 #define CRLF     "\r\n"
 #define PORT     1978
 #define BUF_SIZE 1024
+#define BUF_SAVE_SIZE 3000
 #define MAX_BIO_LENGTH 1000
 #define PSEUDO_MAX_LENGTH 50
 #define PSEUDO_MIN_LENGTH 2
@@ -34,8 +35,9 @@ typedef struct in_addr IN_ADDR;
 // Global Variables
 char pseudo[PSEUDO_MAX_LENGTH];
 bool partie_en_cours = false;
-char save[MAX_PARTIES][BUF_SIZE];
+char save[MAX_PARTIES][BUF_SAVE_SIZE+BUF_SIZE];
 int save_count = 0;
+int save_index = 0;
 
 
 // Function Prototypes
@@ -50,6 +52,9 @@ void handle_list_games(SOCKET sock);
 void handle_quit();
 void handle_user_input(SOCKET sock);
 void handle_server_message(SOCKET sock, char *buffer);
+void handle_save();
+void demo_partie(const char *buffer);
+void saver(SOCKET sock, char *buffer);
 void display_menu();
 void clear_screen_custom();
 void app(const char *address);

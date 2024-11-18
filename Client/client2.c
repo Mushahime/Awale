@@ -21,6 +21,7 @@ typedef enum
     BIO_OPTIONS,
     PLAY_AWALE,
     LIST_GAMES_IN_PROGRESS,
+    SEE_SAVE,
     CLEAR_SCREEN,
     QUIT
 } MenuChoice;
@@ -180,6 +181,10 @@ void handle_user_input(SOCKET sock)
         handle_list_games(sock);
         break;
 
+    case SEE_SAVE:
+        handle_save();
+        break;
+
     case CLEAR_SCREEN:
         clear_screen_custom();
         break;
@@ -248,6 +253,89 @@ void handle_list_users(SOCKET sock)
 }
 
 /**
+ * @brief Allow to see the save of the game
+ *
+ */
+void handle_save()
+{
+    if (save_count == 0)
+    {
+        printf("\033[1;31mNo save available.\033[0m\n");
+        display_menu();
+        return;
+    }
+
+    for (int i = 0; i < save_count; i++)
+    {
+        printf("\033[1;34mSave %d:\033[0m\n", i + 1);
+
+        // Créer une copie temporaire du save pour le strtok
+        char temp[BUF_SAVE_SIZE];
+        strncpy(temp, save[i], BUF_SAVE_SIZE);
+        temp[BUF_SAVE_SIZE-1] = '\0';
+
+        char *save_ptr;  // Pour strtok_r
+        char *save_date = strtok_r(temp, "_", &save_ptr);
+        printf("Date: %s -> ", save_date);
+
+        char *challenger = strtok_r(NULL, ":", &save_ptr);
+        printf("Challenger : %s VS ", challenger);
+
+        char *challenged = strtok_r(NULL, ":", &save_ptr);
+        printf("Challenged : %s\n", challenged);
+    }
+
+    // Ask the user if he wants to load a save
+    char input[BUF_SIZE];
+    printf("\033[1;34mEnter the number of the save you want to load: \033[0m");
+    if (fgets(input, sizeof(input), stdin) != NULL)
+    {
+        int save_choice = atoi(input);
+        if (save_choice > 0 && save_choice <= save_count)
+        {
+            save_index = save_choice - 1;
+            printf("\033[1;32mSave loaded successfully!\033[0m\n");
+            printf("save: %s\n", save[save_index]);
+            demo_partie(save[save_index]);
+            sleep(2);
+            display_menu();
+            return;
+        }
+        else
+        {
+            printf("\033[1;31mInvalid save choice.\033[0m\n");
+            printf("\033[1;33mReturning to main menu...\033[0m\n");
+            display_menu();
+            return;
+        }
+    }
+}
+
+void demo_partie(const char *buffer)
+{
+    printf("Demo partie\n");
+    
+    char * date = strtok(buffer, "_");
+    char * challenger = strtok(NULL, ":");
+    char * challenged = strtok(NULL, ":");
+
+    printf("date: %s\n", date);
+    printf("challenger: %s\n", challenger);
+    printf("challenged: %s\n", challenged);
+
+    // Display the game
+    char * tour = strtok(NULL, ":");
+    int tour_int = atoi(tour);
+
+    char * coup = strtok(NULL, ":");
+    int coup_int = atoi(coup);
+    //TODO tant qu'on a un coup à jouer (on arrive pas à la fin de la laste) on le joue (avec un sleep de 2 secondes) 
+    //+ affichage du plateau + affichage du score + affichage du joueur qui doit jouer
+    //TODO affichage du gagnant
+}
+
+
+/**
  * @brief Handles the bio options menu.
  *
  * @param sock The socket connected to the server.
@@ -259,6 +347,7 @@ void handle_bio_options(SOCKET sock)
     printf("\n\033[1;36m=== Bio Options ===\033[0m\n");
     printf("1. Set your bio\n");
     printf("2. View someone's bio\n");
+    printf("Others. Return to main menu\n");
     printf("Choice: ");
 
     if (fgets(input, sizeof(input), stdin) != NULL)
@@ -284,6 +373,9 @@ void handle_bio_options(SOCKET sock)
         else
         {
             printf("\033[1;31mInvalid bio option selected.\033[0m\n");
+            printf("\033[1;33mReturning to main menu...\033[0m\n");
+            display_menu(); 
+            return ;
         }
     }
 }
@@ -354,6 +446,10 @@ void handle_server_message(SOCKET sock, char *buffer)
         process_system_message(buffer);
         should_display_menu = !partie_en_cours;
     }*/
+    else if (strstr(buffer, "declined") != NULL)
+    {
+        should_display_menu = !partie_en_cours;
+    }
     else if (strstr(buffer, "[Challenge") != NULL)
     {
         process_challenge_message(buffer);
@@ -378,27 +474,7 @@ void handle_server_message(SOCKET sock, char *buffer)
 
         if(strstr(buffer, "score") != NULL)
         {
-            // Send to the server if u want to save the game
-            char save_game[BUF_SIZE];
-            printf("Do you want to save the game? (yes/no)\n");
-            //envoyer le message au serveur
-            if (fgets(save_game, sizeof(save_game), stdin) != NULL)
-            {
-                //forme save:pseudo:yes/no
-                save_game[strcspn(save_game, "\n")] = '\0'; // Remove newline
-                char save_game_message[BUF_SIZE];
-                snprintf(save_game_message, sizeof(save_game_message), "save:%s", save_game);
-                printf("save_game_message: %s\n", save_game_message);
-                write_server(sock, save_game_message);
-
-                // wait for the response
-                char response[BUF_SIZE];
-                if (read_server(sock, response) == -1)
-                {
-                    return;
-                }
-                printf("response: %s\n", response);
-            }
+            saver(sock, buffer);
         }
     }
     else
@@ -413,6 +489,64 @@ void handle_server_message(SOCKET sock, char *buffer)
         fflush(stdout);
     }
 }
+
+/**
+ * @brief saves the game
+ *
+ * @param sock The socket connected to the server.
+ * @param buffer The buffer containing the server message.
+ */
+void saver(SOCKET sock, char * buffer){
+    // Send to the server if u want to save the game
+    char save_game[BUF_SIZE];
+    printf("Do you want to save the game? (yes/no)\n");
+    //envoyer le message au serveur
+    if (fgets(save_game, sizeof(save_game), stdin) != NULL)
+    {
+        //forme save:pseudo:yes/no
+        save_game[strcspn(save_game, "\n")] = '\0'; // Remove newline
+        char save_game_message[BUF_SIZE];
+        snprintf(save_game_message, sizeof(save_game_message), "save:%s", save_game);
+        printf("save_game_message: %s\n", save_game_message);
+        write_server(sock, save_game_message);
+
+        // wait for the response
+        char response[BUF_SIZE];
+        if (read_server(sock, response) == -1)
+        {
+            return;
+        }
+
+        if (response[0]=='-')
+        {
+            printf("The game is not saved\n");
+            return;
+        }
+        
+        // Add the date before the response (day/month/year hour) to response
+        time_t t = time(NULL);
+        struct tm tm = *localtime(&t);
+        
+        char date[BUF_SIZE];
+        snprintf(date, sizeof(date), "%d/%d/%d %d:%d", tm.tm_mday, tm.tm_mon + 1, tm.tm_year + 1900, tm.tm_hour, tm.tm_min);
+        
+        char total[BUF_SAVE_SIZE + BUF_SIZE];
+        snprintf(total, sizeof(total), "%s_%s", date, response);
+
+        strncpy(save[save_count], total, BUF_SAVE_SIZE);
+        save[save_count][strlen(total)] = '\0';
+
+        printf("save game: %s\n", save[save_count]);
+
+        save_index = (save_index+1) % MAX_PARTIES;
+        if (save_count < MAX_PARTIES)
+        {
+            save_count++;
+        }
+    }
+}
+
+
 
 /**
  * @brief Processes Awale game messages from the server.
@@ -684,8 +818,9 @@ void display_menu()
     printf("4. Bio options\n");
     printf("5. Play awale vs someone\n");
     printf("6. ALl games in progression\n");
-    printf("7. Clear screen\n");
-    printf("8. Quit\n");
+    printf("7. See the save games\n");
+    printf("8. Clear screen\n");
+    printf("9. Quit\n");
     printf("\n");
     printf("Choice: ");
     fflush(stdout);
