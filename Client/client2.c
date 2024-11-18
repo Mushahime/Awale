@@ -1,5 +1,5 @@
-
 // client2.c
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
@@ -7,90 +7,126 @@
 #include <time.h>
 #include "client2.h"
 #include "../awale.h"
+#include <sys/select.h>
 
-char pseudo[PSEUDO_MAX_LENGTH];
-bool partie_en_cours = false;
+// Constants
+#define MAX_INPUT_LENGTH 256
 
-static void clear_screen(void) {
-#ifdef WIN32
-    system("cls");
-#else
-    system("clear");
-#endif
+// Enumerations for Menu Choices
+typedef enum
+{
+    SEND_PUBLIC_MESSAGE = 1,
+    SEND_PRIVATE_MESSAGE,
+    LIST_USERS,
+    BIO_OPTIONS,
+    PLAY_AWALE,
+    LIST_GAMES_IN_PROGRESS,
+    SEE_SAVE,
+    CLEAR_SCREEN,
+    QUIT
+} MenuChoice;
+
+int main(int argc, char **argv)
+{
+    if (argc < 2)
+    { // Ensure both address and name are provided
+        printf("Usage: %s [address]\n", argv[0]);
+        return EXIT_FAILURE;
+    }
+
+    init();
+    app(argv[1]);
+    end();
+
+    return EXIT_SUCCESS;
 }
 
-static void print_menu(void) {
-    printf("\n\033[1;36m=== Chat Menu ===\033[0m\n");
-    printf("1. Send message to all\n");
-    printf("2. Send private message\n");
-    printf("3. List connected users\n");
-    printf("4. Bio options\n");
-    printf("5. Play awale vs someone\n");
-    printf("6. ALl games in progression\n");
-    printf("7. Clear screen\n");
-    printf("8. Quit\n");
-    printf("\n");
-    printf("\nChoice: ");
-    fflush(stdout);
-}
-
-static void get_multiline_input(char *buffer, int max_size) {
+/**
+ * @brief Prompts the user for multiline input, ending with an empty line.
+ *
+ * @param buffer Pointer to the buffer where input will be stored.
+ * @param max_size Maximum size of the buffer.
+ */
+void get_multiline_input(char *buffer, int max_size)
+{
     printf("Enter your text (end with an empty line):\n");
     memset(buffer, 0, max_size);
-    char line[256];
+    char line[MAX_INPUT_LENGTH];
     int total_len = 0;
-    
-    while (1) {
-        if (fgets(line, sizeof(line), stdin) == NULL) break;
-        if (line[0] == '\n') break;
-        
+
+    while (1)
+    {
+        if (fgets(line, sizeof(line), stdin) == NULL)
+            break;
+        if (line[0] == '\n')
+            break;
+
         int line_len = strlen(line);
-        if (total_len + line_len >= max_size - 1) break;
-        
+        if (total_len + line_len >= max_size - 1)
+            break;
+
         strcat(buffer, line);
         total_len += line_len;
     }
 }
 
-static int get_valid_pseudo(SOCKET sock) {
+/**
+ * @brief Validates and sets the user's nickname by communicating with the server.
+ *
+ * @param sock The socket connected to the server.
+ * @return int Returns 1 on success, 0 on failure.
+ */
+int get_valid_pseudo(SOCKET sock)
+{
     char buffer[BUF_SIZE];
     char response[BUF_SIZE];
-    
-    while (1) {
-        printf("\033[1;33mEnter your nickname (2-%d characters, letters, numbers, underscore only): \033[0m", 
+
+    while (1)
+    {
+        printf("\033[1;33mEnter your nickname (2-%d characters, letters, numbers, underscore only): \033[0m",
                PSEUDO_MAX_LENGTH - 1);
         fflush(stdout);
-        
-        if (fgets(buffer, BUF_SIZE - 1, stdin) == NULL) {
+
+        if (fgets(buffer, sizeof(buffer), stdin) == NULL)
+        {
             return 0;
         }
-        
-        buffer[strcspn(buffer, "\n")] = 0;
-        
-        write_server(sock, buffer);
-        
-        if (read_server(sock, response) == -1) {
+
+        buffer[strcspn(buffer, "\n")] = '\0'; // Remove newline character
+
+        write_server(sock, buffer); // Send nickname to server
+
+        if (read_server(sock, response) == -1)
+        {
             return 0;
         }
-        
-        if (strcmp(response, "connected") == 0) {
+
+        if (strcmp(response, "connected") == 0)
+        {
             printf("\033[1;32mConnected successfully!\033[0m\n");
-            strncpy(pseudo, buffer, PSEUDO_MAX_LENGTH);
+            strncpy(pseudo, buffer, PSEUDO_MAX_LENGTH - 1);
+            pseudo[PSEUDO_MAX_LENGTH - 1] = '\0'; // Ensure null-termination
             return 1;
-        } else if (strcmp(response, "pseudo_exists") == 0) {
-            printf("\033[1;31mThis nickname is already taken. Please choose another one.\033[0m\n");
-            close(sock);
-            exit(EXIT_FAILURE);
-        } else if (strcmp(response, "pseudo_too_short") == 0) {
-            printf("\033[1;31mNickname too short (minimum 2 characters).\033[0m\n");
-            close(sock);
-            exit(EXIT_FAILURE);
-        } else if (strcmp(response, "pseudo_too_long") == 0) {
-            printf("\033[1;31mNickname too long (maximum %d characters).\033[0m\n", PSEUDO_MAX_LENGTH - 1);
-            close(sock);
-            exit(EXIT_FAILURE);
-        } else {
-            printf("\033[1;31mInvalid nickname format. Use letters, numbers, and underscore only.\033[0m\n");
+        }
+        else
+        {
+            // Handle various error responses from the server
+            if (strcmp(response, "pseudo_exists") == 0)
+            {
+                printf("\033[1;31mThis nickname is already taken. Please choose another one.\033[0m\n");
+            }
+            else if (strcmp(response, "pseudo_too_short") == 0)
+            {
+                printf("\033[1;31mNickname too short (minimum 2 characters).\033[0m\n");
+            }
+            else if (strcmp(response, "pseudo_too_long") == 0)
+            {
+                printf("\033[1;31mNickname too long (maximum %d characters).\033[0m\n", PSEUDO_MAX_LENGTH - 1);
+            }
+            else
+            {
+                printf("\033[1;31mInvalid nickname format. Use letters, numbers, and underscore only.\033[0m\n");
+            }
             close(sock);
             exit(EXIT_FAILURE);
         }
@@ -98,385 +134,759 @@ static int get_valid_pseudo(SOCKET sock) {
     return 0;
 }
 
-static void handle_user_input(SOCKET sock) {
+/**
+ * @brief Handles user input based on menu choices.
+ *
+ * @param sock The socket connected to the server.
+ */
+void handle_user_input(SOCKET sock)
+{
     char buffer[BUF_SIZE];
     char input[BUF_SIZE];
     int choice;
-    
-    if(fgets(input, BUF_SIZE, stdin) == NULL) return;
+
+
+    if (fgets(input, sizeof(input), stdin) == NULL)
+        return;
+
+    if (partie_en_cours)
+    {
+        return;
+    }
     choice = atoi(input);
-    
-    switch(choice) {
-        case 1: // Send public message
-            printf("\033[1;34mEnter your message: \033[0m");
-            if(fgets(buffer, BUF_SIZE - 1, stdin) != NULL) {
-                buffer[strcspn(buffer, "\n")] = 0;
-                write_server(sock, buffer);
-            }
-            break;
-            
-        case 2: // Send private message
-            {
-                char dest[BUF_SIZE];
-                char msg[BUF_SIZE];
-                printf("\033[1;34mEnter recipient's nickname: \033[0m");
-                if(fgets(dest, BUF_SIZE - 1, stdin) == NULL) break;
-                dest[strcspn(dest, "\n")] = 0;
-                
-                printf("\033[1;34mEnter your message: \033[0m");
-                if(fgets(msg, BUF_SIZE - 1, stdin) == NULL) break;
-                msg[strcspn(msg, "\n")] = 0;
-                
-                snprintf(buffer, BUF_SIZE, "mp:%s:%s", dest, msg);
-                write_server(sock, buffer);
-            }
-            break;
-            
-        case 3: // List users
-            strcpy(buffer, "list:");
-            write_server(sock, buffer);
-            break;
-            
-        case 4: // Bio options
-            printf("\n\033[1;36m=== Bio Options ===\033[0m\n");
-            printf("1. Set your bio\n");
-            printf("2. View someone's bio\n");
-            printf("Choice: ");
-            
-            if(fgets(input, BUF_SIZE, stdin) != NULL) {
-                int bio_choice = atoi(input);
-                if(bio_choice == 1) {
-                    char bio[MAX_BIO_LENGTH] = "setbio:";
-                    printf("\033[1;34mEnter your bio:\033[0m\n");
-                    get_multiline_input(bio + 7, MAX_BIO_LENGTH - 7);
-                    write_server(sock, bio);
-                }
-                else if(bio_choice == 2) {
-                    printf("\033[1;34mEnter nickname to view bio: \033[0m");
-                    if(fgets(input, BUF_SIZE - 1, stdin) != NULL) {
-                        input[strcspn(input, "\n")] = 0;
-                        snprintf(buffer, BUF_SIZE, "getbio:%s", input);
-                        write_server(sock, buffer);
-                    }
-                }
-            }
-            break;
-        case 5: // Play awale
-            printf("\033[1;34mEnter the nickname of the player you want to play against: \033[0m");
-            if(fgets(buffer, BUF_SIZE - 1, stdin) != NULL) {
-                buffer[strcspn(buffer, "\n")] = 0;
-                snprintf(input, BUF_SIZE, "awale:%s", buffer);
-                write_server(sock, input);
-                printf("Waiting for response...\n");
-            }
-            break;
-        case 6: // List games in progress
-            strcpy(buffer, "awale_list:");
-            write_server(sock, buffer);
-            break;  
-        case 7: // Clear screen
-            clear_screen();
-            break;
-            
-        case 8: // Quit
-            printf("\033[1;33mGoodbye!\033[0m\n");
-            exit(EXIT_SUCCESS);
-            break;
-            
-        default:
-            printf("\033[1;31mInvalid choice.\033[0m\n");
-            break;
+
+    switch (choice)
+    {
+    case SEND_PUBLIC_MESSAGE:
+        handle_send_public_message(sock);
+        break;
+
+    case SEND_PRIVATE_MESSAGE:
+        handle_send_private_message(sock);
+        break;
+
+    case LIST_USERS:
+        handle_list_users(sock);
+        break;
+
+    case BIO_OPTIONS:
+        handle_bio_options(sock);
+        break;
+
+    case PLAY_AWALE:
+        handle_play_awale(sock);
+        break;
+
+    case LIST_GAMES_IN_PROGRESS:
+        handle_list_games(sock);
+        break;
+
+    case SEE_SAVE:
+        handle_save();
+        break;
+
+    case CLEAR_SCREEN:
+        clear_screen_custom();
+        break;
+
+    case QUIT:
+        handle_quit();
+        break;
+
+    default:
+        printf("\033[1;31mInvalid choice.\033[0m\n");
+        break;
     }
 }
 
-static void app(const char *address, const char *name) {
+/**
+ * @brief Handles sending a public message to the server.
+ *
+ * @param sock The socket connected to the server.
+ */
+void handle_send_public_message(SOCKET sock)
+{
+    char buffer[BUF_SIZE];
+    printf("\033[1;34mEnter your message: \033[0m");
+    if (fgets(buffer, sizeof(buffer) - 1, stdin) != NULL)
+    {
+        buffer[strcspn(buffer, "\n")] = '\0'; // Remove newline
+        write_server(sock, buffer);
+    }
+}
+
+/**
+ * @brief Handles sending a private message to a specific user.
+ *
+ * @param sock The socket connected to the server.
+ */
+void handle_send_private_message(SOCKET sock)
+{
+    char dest[PSEUDO_MAX_LENGTH];
+    char msg[BUF_SIZE];
+    char buffer[BUF_SIZE];
+
+    printf("\033[1;34mEnter recipient's nickname: \033[0m");
+    if (fgets(dest, sizeof(dest), stdin) == NULL)
+        return;
+    dest[strcspn(dest, "\n")] = '\0'; // Remove newline
+
+    printf("\033[1;34mEnter your message: \033[0m");
+    if (fgets(msg, sizeof(msg), stdin) == NULL)
+        return;
+    msg[strcspn(msg, "\n")] = '\0'; // Remove newline
+
+    snprintf(buffer, sizeof(buffer), "mp:%s:%s", dest, msg);
+    write_server(sock, buffer);
+}
+
+/**
+ * @brief Handles requesting the list of users from the server.
+ *
+ * @param sock The socket connected to the server.
+ */
+void handle_list_users(SOCKET sock)
+{
+    char buffer[BUF_SIZE];
+    strcpy(buffer, "list:");
+    write_server(sock, buffer);
+}
+
+/**
+ * @brief Allow to see the save of the game
+ *
+ */
+void handle_save()
+{
+    if (save_count == 0)
+    {
+        printf("\033[1;31mNo save available.\033[0m\n");
+        display_menu();
+        return;
+    }
+
+    for (int i = 0; i < save_count; i++)
+    {
+        printf("\033[1;34mSave %d:\033[0m\n", i + 1);
+
+        // Créer une copie temporaire du save pour le strtok
+        char temp[BUF_SAVE_SIZE];
+        strncpy(temp, save[i], BUF_SAVE_SIZE);
+        temp[BUF_SAVE_SIZE-1] = '\0';
+
+        char *save_ptr;  // Pour strtok_r
+        char *save_date = strtok_r(temp, "_", &save_ptr);
+        printf("Date: %s -> ", save_date);
+
+        char *challenger = strtok_r(NULL, ":", &save_ptr);
+        printf("Challenger : %s VS ", challenger);
+
+        char *challenged = strtok_r(NULL, ":", &save_ptr);
+        printf("Challenged : %s\n", challenged);
+    }
+
+    // Ask the user if he wants to load a save
+    char input[BUF_SIZE];
+    printf("\033[1;34mEnter the number of the save you want to load: \033[0m");
+    if (fgets(input, sizeof(input), stdin) != NULL)
+    {
+        int save_choice = atoi(input);
+        if (save_choice > 0 && save_choice <= save_count)
+        {
+            save_index = save_choice - 1;
+            printf("\033[1;32mSave loaded successfully!\033[0m\n");
+            printf("save: %s\n", save[save_index]);
+            demo_partie(save[save_index]);
+            sleep(2);
+            display_menu();
+            return;
+        }
+        else
+        {
+            printf("\033[1;31mInvalid save choice.\033[0m\n");
+            printf("\033[1;33mReturning to main menu...\033[0m\n");
+            display_menu();
+            return;
+        }
+    }
+}
+
+void demo_partie(const char *buffer)
+{
+    printf("Demo partie\n");
+    
+    char * date = strtok(buffer, "_");
+    char * challenger = strtok(NULL, ":");
+    char * challenged = strtok(NULL, ":");
+
+    printf("date: %s\n", date);
+    printf("challenger: %s\n", challenger);
+    printf("challenged: %s\n", challenged);
+
+    // Display the game
+    char * tour = strtok(NULL, ":");
+    int tour_int = atoi(tour);
+
+    char * coup = strtok(NULL, ":");
+    int coup_int = atoi(coup);
+    //TODO tant qu'on a un coup à jouer (on arrive pas à la fin de la laste) on le joue (avec un sleep de 2 secondes) 
+    //+ affichage du plateau + affichage du score + affichage du joueur qui doit jouer
+    //TODO affichage du gagnant
+}
+
+
+/**
+ * @brief Handles the bio options menu.
+ *
+ * @param sock The socket connected to the server.
+ */
+void handle_bio_options(SOCKET sock)
+{
+    char buffer[BUF_SIZE];
+    char input[BUF_SIZE];
+    printf("\n\033[1;36m=== Bio Options ===\033[0m\n");
+    printf("1. Set your bio\n");
+    printf("2. View someone's bio\n");
+    printf("Others. Return to main menu\n");
+    printf("Choice: ");
+
+    if (fgets(input, sizeof(input), stdin) != NULL)
+    {
+        int bio_choice = atoi(input);
+        if (bio_choice == 1)
+        {
+            char bio[MAX_BIO_LENGTH] = "setbio:";
+            printf("\033[1;34mEnter your bio:\033[0m\n");
+            get_multiline_input(bio + 7, sizeof(bio) - 7);
+            write_server(sock, bio);
+        }
+        else if (bio_choice == 2)
+        {
+            printf("\033[1;34mEnter nickname to view bio: \033[0m");
+            if (fgets(input, sizeof(input), stdin) != NULL)
+            {
+                input[strcspn(input, "\n")] = '\0'; // Remove newline
+                snprintf(buffer, sizeof(buffer), "getbio:%s", input);
+                write_server(sock, buffer);
+            }
+        }
+        else
+        {
+            printf("\033[1;31mInvalid bio option selected.\033[0m\n");
+            printf("\033[1;33mReturning to main menu...\033[0m\n");
+            display_menu(); 
+            return ;
+        }
+    }
+}
+
+/**
+ * @brief Handles initiating a game of Awale.
+ *
+ * @param sock The socket connected to the server.
+ */
+void handle_play_awale(SOCKET sock)
+{
+    char buffer[BUF_SIZE];
+    char input[BUF_SIZE];
+
+    printf("\033[1;34mEnter the nickname of the player you want to play against: \033[0m");
+    if (fgets(buffer, sizeof(buffer), stdin) != NULL)
+    {
+        buffer[strcspn(buffer, "\n")] = '\0'; // Remove newline
+        snprintf(input, sizeof(input), "awale:%s", buffer);
+        write_server(sock, input);
+        printf("Waiting for response...\n");
+    }
+}
+
+/**
+ * @brief Handles requesting the list of games in progress from the server.
+ *
+ * @param sock The socket connected to the server.
+ */
+void handle_list_games(SOCKET sock)
+{
+    char buffer[BUF_SIZE];
+    strcpy(buffer, "awale_list:");
+    write_server(sock, buffer);
+}
+
+/**
+ * @brief Handles quitting the application.
+ */
+void handle_quit()
+{
+    printf("\033[1;33mGoodbye!\033[0m\n");
+    exit(EXIT_SUCCESS);
+}
+
+/**
+ * @brief Handles messages received from the server.
+ *
+ * @param sock The socket connected to the server.
+ * @param buffer The buffer containing the server message.
+ */
+void handle_server_message(SOCKET sock, char *buffer)
+{
+    // Clear the current line and move cursor up
+    printf("\r\033[K\033[A\033[K");
+
+    printf("le buffer est %s\n", buffer);
+
+    bool should_display_menu = false;
+
+    if (strstr(buffer, "[Private") != NULL)
+    {
+        process_private_message(buffer);
+        should_display_menu = !partie_en_cours;
+    }
+    /*else if (strstr(buffer, "disconnected") != NULL || strstr(buffer, "joined") != NULL)
+    {
+        process_system_message(buffer);
+        should_display_menu = !partie_en_cours;
+    }*/
+    else if (strstr(buffer, "declined") != NULL)
+    {
+        should_display_menu = !partie_en_cours;
+    }
+    else if (strstr(buffer, "[Challenge") != NULL)
+    {
+        process_challenge_message(buffer);
+    }
+    else if (strncmp(buffer, "AWALE:", 6) == 0)
+    {
+        process_awale_message(sock, buffer + 6);
+    }
+    else if (strncmp(buffer, "ERROR:", 6) == 0)
+    {
+        process_error_message(sock, buffer);
+    }
+    else if (strstr(buffer, "fight") != NULL)
+    {
+        process_fight_message(sock, buffer);
+    }
+    else if (strstr(buffer, "over") != NULL)
+    {
+        process_game_over_message(sock, buffer);
+        partie_en_cours = false;
+        should_display_menu = true;
+
+        if(strstr(buffer, "score") != NULL)
+        {
+            saver(sock, buffer);
+        }
+    }
+    else
+    {
+        printf("\033[1;32m%s\033[0m\n", buffer);
+        should_display_menu = !partie_en_cours;
+    }
+
+    if (should_display_menu)
+    {
+        display_menu();
+        fflush(stdout);
+    }
+}
+
+/**
+ * @brief saves the game
+ *
+ * @param sock The socket connected to the server.
+ * @param buffer The buffer containing the server message.
+ */
+void saver(SOCKET sock, char * buffer){
+    // Send to the server if u want to save the game
+    char save_game[BUF_SIZE];
+    printf("Do you want to save the game? (yes/no)\n");
+    //envoyer le message au serveur
+    if (fgets(save_game, sizeof(save_game), stdin) != NULL)
+    {
+        //forme save:pseudo:yes/no
+        save_game[strcspn(save_game, "\n")] = '\0'; // Remove newline
+        char save_game_message[BUF_SIZE];
+        snprintf(save_game_message, sizeof(save_game_message), "save:%s", save_game);
+        printf("save_game_message: %s\n", save_game_message);
+        write_server(sock, save_game_message);
+
+        // wait for the response
+        char response[BUF_SIZE];
+        if (read_server(sock, response) == -1)
+        {
+            return;
+        }
+
+        if (response[0]=='-')
+        {
+            printf("The game is not saved\n");
+            return;
+        }
+        
+        // Add the date before the response (day/month/year hour) to response
+        time_t t = time(NULL);
+        struct tm tm = *localtime(&t);
+        
+        char date[BUF_SIZE];
+        snprintf(date, sizeof(date), "%d/%d/%d %d:%d", tm.tm_mday, tm.tm_mon + 1, tm.tm_year + 1900, tm.tm_hour, tm.tm_min);
+        
+        char total[BUF_SAVE_SIZE + BUF_SIZE];
+        snprintf(total, sizeof(total), "%s_%s", date, response);
+
+        strncpy(save[save_count], total, BUF_SAVE_SIZE);
+        save[save_count][strlen(total)] = '\0';
+
+        printf("save game: %s\n", save[save_count]);
+
+        save_index = (save_index+1) % MAX_PARTIES;
+        if (save_count < MAX_PARTIES)
+        {
+            save_count++;
+        }
+    }
+}
+
+
+
+/**
+ * @brief Processes Awale game messages from the server.
+ *
+ * @param sock The socket connected to the server.
+ * @param msg_body The body of the Awale message excluding the "AWALE:" prefix.
+ */
+void process_awale_message(SOCKET sock, char *msg_body)
+{
+    partie_en_cours = true;
+    int plateau[TAILLE_PLATEAU];
+    int joueur;
+    char nom[PSEUDO_MAX_LENGTH];
+
+    // Duplicate the message to avoid modifying the original buffer
+    char *msg = strdup(msg_body);
+    if (msg == NULL)
+    {
+        perror("strdup failed");
+        exit(EXIT_FAILURE);
+    }
+
+    char *token = strtok(msg, ":");
+    int i = 0;
+
+    // Retrieve the state of the board
+    while (token != NULL && i < TAILLE_PLATEAU)
+    {
+        plateau[i++] = atoi(token);
+        token = strtok(NULL, ":");
+    }
+
+    // Retrieve the player's nickname
+    if (token != NULL)
+    {
+        strncpy(nom, token, sizeof(nom) - 1);
+        nom[sizeof(nom) - 1] = '\0';
+        token = strtok(NULL, ":");
+    }
+
+    // Retrieve the player's number
+    if (token != NULL)
+    {
+        joueur = atoi(token);
+    }
+
+    // Retrieve the scores of the players
+    int score_joueur1 = atoi(strtok(NULL, ":"));
+    int score_joueur2 = atoi(strtok(NULL, ":"));
+
+    free(msg); // Free the duplicated message
+
+    // Display the game board
+    afficher_plateau2(plateau, score_joueur1, score_joueur2);
+
+    // Determine if it's the user's turn
+    if (strcmp(nom, pseudo) == 0)
+    {
+        prompt_for_move(sock, joueur, nom, plateau, score_joueur1, score_joueur2);
+    }
+}
+
+/**
+ * @brief Prompts the user to make a move in the Awale game.
+ *
+ * @param sock The socket connected to the server.
+ * @param joueur The player's number.
+ * @param nom The player's nickname.
+ * @param plateau The current state of the game board.
+ * @param score_joueur1 The score of player 1.
+ * @param score_joueur2 The score of player 2.
+ */
+void prompt_for_move(SOCKET sock, int joueur, const char *nom, int plateau[], int score_joueur1, int score_joueur2)
+{
+    int first, last;
+    if (joueur == 1)
+    {
+        first = 0;
+        last = 5;
+    }
+    else
+    {
+        first = 6;
+        last = 11;
+    }
+
+    printf("\n");
+    printf("It's your turn, player %d! Please enter a number between %d and %d:\n", joueur, first, last);
+
+    char move_input[BUF_SIZE];
+    while (1)
+    {
+        if (fgets(move_input, sizeof(move_input), stdin) != NULL)
+        {
+            move_input[strcspn(move_input, "\n")] = '\0'; // Remove newline
+            int move_int = atoi(move_input);
+            if (move_int >= first && move_int <= last)
+            {
+                char buffer[BUF_SIZE];
+                snprintf(buffer, sizeof(buffer), "awale_move:%d", move_int);
+                write_server(sock, buffer);
+                break;
+            }
+            else
+            {
+                //in red 
+                printf("\033[1;31mInvalid input! Please enter a number between %d and %d:\033[0m\n", first, last);
+            }
+        }
+    }
+}
+
+/**
+ * @brief Processes error messages from the server.
+ *
+ * @param buffer The buffer containing the error message.
+ */
+void process_error_message(SOCKET sock, char *buffer)
+{
+    char *error_type = strtok(buffer, ":");
+    char *error_message = strtok(NULL, ":");
+    char *joueur_str = strtok(NULL, ":");
+    int joueur = (joueur_str != NULL) ? atoi(joueur_str) : 0;
+
+    printf("\033[1;31m%s: %s\033[0m\n", error_type, error_message);
+
+    prompt_for_new_move(sock, joueur);
+}
+
+/**
+ * @brief Prompts the user to enter a new move after an error.
+ *
+ * @param joueur The player's number.
+ */
+void prompt_for_new_move(SOCKET sock, int joueur)
+{
+    char move_input[BUF_SIZE];
+    int first, last;
+    if (joueur == 1)
+    {
+        first = 0;
+        last = 5;
+    }
+    else
+    {
+        first = 6;
+        last = 11;
+    }
+
+    printf("Please enter a valid move between %d and %d:\n", first, last);
+    while (1)
+    {
+        if (fgets(move_input, sizeof(move_input), stdin) != NULL)
+        {
+            move_input[strcspn(move_input, "\n")] = '\0'; 
+            int move_int = atoi(move_input);
+            if (move_int >= first && move_int <= last)
+            {
+                char buffer[BUF_SIZE];
+                snprintf(buffer, sizeof(buffer), "awale_move:%d", move_int);
+                write_server(sock, buffer);  
+                break;
+            }
+            else
+            {
+                printf("Invalid range! Please enter a number between %d and %d:\n", first, last);
+            }
+        }
+    }
+}
+
+/**
+ * @brief Processes fight/challenge messages from the server.
+ *
+ * @param sock The socket connected to the server.
+ * @param buffer The buffer containing the fight message.
+ */
+void process_fight_message(SOCKET sock, char *buffer)
+{
+    printf("\033[1;31m%s\033[0m\n", buffer); // Red for fight messages
+    printf("\033[1;31mDo you accept the challenge? (yes/no)\033[0m\n");
+
+    char response[BUF_SIZE];
+    while (1)
+    {
+        if (fgets(response, sizeof(response), stdin) != NULL)
+        {
+            response[strcspn(response, "\n")] = '\0'; // Remove newline
+
+            if (strcmp(response, "yes") == 0 || strcmp(response, "no") == 0)
+            {
+                char challenge_response[BUF_SIZE];
+                snprintf(challenge_response, sizeof(challenge_response), "awale_response:%s", response);
+                write_server(sock, challenge_response);
+                break;
+            }
+            else
+            {
+                printf("\033[1;31mPlease enter 'yes' or 'no'\033[0m\n");
+            }
+        }
+    }
+}
+
+/**
+ * @brief Processes game over messages from the server.
+ *
+ * @param sock The socket connected to the server.
+ * @param buffer The buffer containing the game over message.
+ */
+void process_game_over_message(SOCKET sock, char *buffer)
+{
+    printf("\033[1;33m%s\033[0m\n", buffer); // Jaune pour les messages de fin de partie
+    partie_en_cours = false;
+    //display_menu(); // Afficher le menu après la fin de partie
+}
+
+
+/**
+ * @brief Processes private messages from the server.
+ *
+ * @param buffer The buffer containing the private message.
+ */
+void process_private_message(char *buffer)
+{
+    printf("\033[1;35m%s\033[0m\n", buffer); // Magenta for private messages
+}
+
+/**
+ * @brief Processes system messages like user join or disconnect.
+ *
+ * @param buffer The buffer containing the system message.
+ */
+void process_system_message(char *buffer)
+{
+    printf("\033[1;33m%s\033[0m\n", buffer); // Yellow for system messages
+}
+
+/**
+ * @brief Processes challenge messages from the server.
+ *
+ * @param buffer The buffer containing the challenge message.
+ */
+void process_challenge_message(char *buffer)
+{
+    printf("\033[1;33m%s\033[0m\n", buffer); // Yellow for challenge messages
+    if (strstr(buffer, "Game started") != NULL)
+    {
+        partie_en_cours = true;  // Set game state before announcing wait
+        printf("\033[1;33mStarting game in 5 seconds...\033[0m\n");
+#ifdef WIN32
+        Sleep(5000); // Windows Sleep in milliseconds
+#else
+        sleep(5); // Unix sleep in seconds
+#endif
+        // Ne pas afficher le menu ici car une partie commence
+    }
+}
+
+/**
+ * @brief Displays the main menu to the user.
+ */
+void display_menu()
+{
+    printf("\n\033[1;36m=== Chat Menu ===\033[0m\n");
+    printf("1. Send message to all\n");
+    printf("2. Send private message\n");
+    printf("3. List connected users (+ rank)\n");
+    printf("4. Bio options\n");
+    printf("5. Play awale vs someone\n");
+    printf("6. ALl games in progression\n");
+    printf("7. See the save games\n");
+    printf("8. Clear screen\n");
+    printf("9. Quit\n");
+    printf("\n");
+    printf("Choice: ");
+    fflush(stdout);
+}
+
+/**
+ * @brief Clears the screen using system-specific commands.
+ */
+void clear_screen_custom()
+{
+#ifdef _WIN32
+    system("cls");
+#else
+    system("clear");
+#endif
+}
+
+/**
+ * @brief Main application loop handling connection and communication.
+ *
+ * @param address Server address to connect to.
+ * @param name User's name (not used in the current implementation).
+ */
+void app(const char *address)
+{
     SOCKET sock = init_connection(address);
     char buffer[BUF_SIZE];
     fd_set rdfs;
-    
-    /* get valid pseudo */
-    if (!get_valid_pseudo(sock)) {
+
+    if (!get_valid_pseudo(sock))
+    {
         printf("\033[1;31mError getting valid nickname\033[0m\n");
         exit(EXIT_FAILURE);
     }
-    
-    clear_screen();
-    print_menu();
-    
-    while(1) {
+
+    clear_screen_custom();
+    display_menu();  // Premier affichage du menu
+
+    while (1)
+    {
         FD_ZERO(&rdfs);
         FD_SET(STDIN_FILENO, &rdfs);
         FD_SET(sock, &rdfs);
-        
-        if(select(sock + 1, &rdfs, NULL, NULL, NULL) == -1) {
+
+        if (select(sock + 1, &rdfs, NULL, NULL, NULL) == -1)
+        {
             perror("select()");
             exit(errno);
         }
-        
-        if(FD_ISSET(STDIN_FILENO, &rdfs)) {
+
+        if (FD_ISSET(STDIN_FILENO, &rdfs))
+        {
             handle_user_input(sock);
-            if (!partie_en_cours) {
-                print_menu();
-            }
+            // Ne pas afficher le menu ici, il sera affiché après le traitement de la commande
         }
-        else if(FD_ISSET(sock, &rdfs)) {
+        else if (FD_ISSET(sock, &rdfs))
+        {
             int n = read_server(sock, buffer);
-            if(n == 0) {
+            if (n == 0)
+            {
                 printf("\033[1;31mServer disconnected!\033[0m\n");
                 break;
             }
-            
-            // Clear the current line and move cursor up
-            printf("\r\033[K\033[A\033[K");
-            
-            // Print the message with appropriate color based on type
-            if(strstr(buffer, "[Private") != NULL) {
-                printf("\033[1;35m%s\033[0m\n", buffer); // Magenta for private messages
-            }
-            else if(strstr(buffer, "joined") != NULL || strstr(buffer, "disconnected") != NULL) {
-                printf("\033[1;33m%s\033[0m\n", buffer); // Yellow for system messages
-            }
-            else if(strstr(buffer, "[Challenge") != NULL) {
-                printf("\033[1;33m%s\033[0m\n", buffer); // Yellow for challenge messages
-                if(strstr(buffer, "Game started") != NULL) {
-                    printf("\033[1;33mStarting game in 5 seconds...\033[0m\n");
-                    #ifdef WIN32
-                        Sleep(2000); // Windows
-                    #else
-                        sleep(2); // Unix
-                    #endif
-                    // On attend juste de recevoir le plateau du serveur
-                }
-            }
-            else if(strncmp(buffer, "AWALE:", 6) == 0) {
-                // Parse le message initial
-                partie_en_cours = true;
-                int plateau[TAILLE_PLATEAU];
-                int joueur;
-                char nom[PSEUDO_MAX_LENGTH];
-
-                char *msg = strdup(buffer + 6);  // Copie le message sans le préfixe
-                char *token = strtok(msg, ":");
-                int i = 0;
-
-
-                
-                // Récupère l'état du plateau
-                while(token != NULL && i < TAILLE_PLATEAU) {
-                    plateau[i++] = atoi(token);
-                    token = strtok(NULL, ":");
-                }
-
-                // Récupérer le pseudo
-                if (token != NULL) {
-                    strncpy(nom, token, PSEUDO_MAX_LENGTH - 1);
-                    nom[PSEUDO_MAX_LENGTH - 1] = '\0';
-                    token = strtok(NULL, ":");
-                }
-
-                // Récupérer le numéro du joueur
-                if (token != NULL) {
-                    joueur = atoi(token);
-                }
-
-                // Récupérer les scores des joueurs
-                int score_joueur1 = atoi(strtok(NULL, ":"));
-                int score_joueur2 = atoi(strtok(NULL, ":"));
-
-                free(msg);  // Libérer la mémoire allouée
-                
-                
-                // Afficher le plateau
-                afficher_plateau2(plateau, score_joueur1, score_joueur2);
-
-                // Comparer les deux pseudos pour savoir si c'est notre tour
-                if (strcmp(nom, pseudo) == 0) {
-                    int first;
-                    int last;
-                    if (joueur == 1) {
-                        first = 0;
-                        last = 5;
-                    } else {
-                        first = 6;
-                        last = 11;
-                    }
-                    printf("\n");
-                    printf("It's your turn player %d ! Please enter a number between %d and %d:\n", joueur, first, last);
-                    char move[BUF_SIZE];
-                    while (1) {
-                        if (fgets(move, BUF_SIZE, stdin) != NULL) {
-                            move[strcspn(move, "\n")] = 0; // Remove newline
-                            int move_int = atoi(move);
-                            if (move_int >= first && move_int <= last) {
-                                snprintf(buffer, BUF_SIZE, "awale_move:%d", move_int);
-                                write_server(sock, buffer);
-                                break;
-                            } else {
-                                printf("It's your turn! Please enter a number between %d and %d:\n", first, last);
-                            }
-                        }
-                    }
-                }
-            }
-            else if(strncmp(buffer, "ERROR:", 6) == 0) {
-                // récupérer le numéro du joueur qui a joué le coup + le message d'erreur
-                // format: ERROR:MESSAGE:NUMERO_JOUEUR
-
-                char *error = strtok(buffer, ":");
-                char *message = strtok(NULL, ":");
-                char *joueur_str = strtok(NULL, ":");
-                int joueur = atoi(joueur_str);
-
-                printf("\033[1;31m%s: %s\033[0m\n", error, message);
-
-                // Demander un nouveau coup
-                char move[BUF_SIZE];
-                int first, last;
-                if (joueur == 1) {
-                    first = 0;
-                    last = 5;
-                } else {
-                    first = 6;
-                    last = 11;
-                }
-                
-                printf("Please enter a valid move between %d and %d:\n", first, last);
-                while (1) {
-                    if (fgets(move, BUF_SIZE, stdin) != NULL) {
-                        move[strcspn(move, "\n")] = 0;
-                        int move_int = atoi(move);
-                        if (move_int >= first && move_int <= last) {
-                            snprintf(buffer, BUF_SIZE, "awale_move:%d", move_int);
-                            write_server(sock, buffer);
-                            break;
-                        } else {
-                            printf("Invalid range! Please enter a number between %d and %d:\n", first, last);
-                        }
-                    }
-                }
-            }
-            else if(strstr(buffer, "fight") != NULL) {
-                printf("\033[1;31m%s\033[0m\n", buffer); // Red for fight messages
-                printf("\033[1;31mDo you accept the challenge? (yes/no)\033[0m\n");
-                
-                char response[BUF_SIZE];
-                while (1) {
-                    if (fgets(response, BUF_SIZE, stdin) != NULL) {
-                        response[strcspn(response, "\n")] = 0; // Remove newline
-                        
-                        if (strcmp(response, "yes") == 0 || strcmp(response, "no") == 0) {
-                            char challenge_response[BUF_SIZE];
-                            snprintf(challenge_response, BUF_SIZE, "awale_response:%s", response);
-                            write_server(sock, challenge_response);
-                            break;
-                        } else {
-                            // en rouge
-                            printf("\033[1;31mPlease enter 'yes' or 'no'\033[0m\n");
-                        }
-                    }
-                }
-            }
-            else if(strncmp(buffer, "Game over", 9) == 0) {
-                printf("\033[1;31m%s\033[0m\n", buffer); // Red for win messages
-                partie_en_cours = false;
-                // Envoyer l'acquittement
-                write_server(sock, "ack_gameover");
-            }
-            else {
-                printf("\033[1;32m%s\033[0m\n", buffer); // Green for normal messages
-            }
-            
-            if (partie_en_cours) {
-                printf("\033[1;33mWaiting for the other player...\033[0m\n");
-                // Bloquer l'entrée utilisateur pendant que l'autre joueur joue
-                FD_CLR(STDIN_FILENO, &rdfs);
-            }
-            else{
-                print_menu();
-            }
+            handle_server_message(sock, buffer);
         }
     }
-    
+
     end_connection(sock);
-}
-
-static void init(void) {
-#ifdef WIN32
-    WSADATA wsa;
-    int err = WSAStartup(MAKEWORD(2, 2), &wsa);
-    if(err < 0) {
-        puts("WSAStartup failed !");
-        exit(EXIT_FAILURE);
-    }
-#endif
-}
-
-static void end(void) {
-#ifdef WIN32
-    WSACleanup();
-#endif
-}
-
-static int init_connection(const char *address) {
-    SOCKET sock = socket(AF_INET, SOCK_STREAM, 0);
-    SOCKADDR_IN sin = { 0 };
-    struct hostent *hostinfo;
-    
-    if(sock == INVALID_SOCKET) {
-        perror("socket()");
-        exit(errno);
-    }
-    
-    hostinfo = gethostbyname(address);
-    if(hostinfo == NULL) {
-        fprintf(stderr, "Unknown host %s.\n", address);
-        exit(EXIT_FAILURE);
-    }
-    
-    sin.sin_addr = *(IN_ADDR *) hostinfo->h_addr;
-    sin.sin_port = htons(PORT);
-    sin.sin_family = AF_INET;
-    
-    if(connect(sock, (SOCKADDR *) &sin, sizeof(SOCKADDR)) == SOCKET_ERROR) {
-        perror("connect()");
-        exit(errno);
-    }
-    
-    return sock;
-}
-
-static void end_connection(int sock) {
-    closesocket(sock);
-}
-
-static int read_server(SOCKET sock, char *buffer) {
-    int n = 0;
-    
-    if((n = recv(sock, buffer, BUF_SIZE - 1, 0)) < 0) {
-        perror("recv()");
-        exit(errno);
-    }
-    
-    buffer[n] = 0;
-    return n;
-}
-
-static void write_server(SOCKET sock, const char *buffer) {
-    if(send(sock, buffer, strlen(buffer), 0) < 0) {
-        perror("send()");
-        exit(errno);
-    }
-}
-
-int main(int argc, char **argv) {
-    if(argc < 2) {
-        printf("Usage: %s [address]\n", argv[0]);
-        return EXIT_FAILURE;
-    }
-    
-    init();
-    app(argv[1], argv[2]);
-    end();
-    
-    return EXIT_SUCCESS;
 }

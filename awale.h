@@ -9,7 +9,8 @@
 #include <stdio.h>
 
 // Structure représentant l'état du jeu d'Awalé
-typedef struct {
+typedef struct
+{
     int plateau[TAILLE_PLATEAU];
     int score_joueur1;
     int score_joueur2;
