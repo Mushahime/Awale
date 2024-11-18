@@ -27,7 +27,6 @@ typedef struct in_addr IN_ADDR;
 #endif
 
 #define CRLF "\r\n"
-#define PORT 1978
 #define BUF_SIZE 1024
 #define MAX_BIO_LENGTH 1000
 #define PSEUDO_MAX_LENGTH 50
@@ -36,7 +35,7 @@ typedef struct in_addr IN_ADDR;
 // Function declarations
 void init(void);
 void end(void);
-int init_connection(const char *address);
+int init_connection(const char *address, int port);
 void end_connection(int sock);
 int read_server(SOCKET sock, char *buffer);
 void write_server(SOCKET sock, const char *buffer);

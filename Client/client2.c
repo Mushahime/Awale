@@ -28,14 +28,15 @@ typedef enum
 
 int main(int argc, char **argv)
 {
-    if (argc < 2)
+    if (argc > 3 || argc < 3 || atoi(argv[2]) < 1024 || atoi(argv[2]) > 65535)
     { // Ensure both address and name are provided
-        printf("Usage: %s [address]\n", argv[0]);
+        printf("Error: arguments error\n");
         return EXIT_FAILURE;
     }
+    printf("init OK\n");
 
     init();
-    app(argv[1]);
+    app(argv[1], atoi(argv[2]));
     end();
 
     return EXIT_SUCCESS;
@@ -159,6 +160,7 @@ void handle_user_input(SOCKET sock)
     {
     case SEND_PUBLIC_MESSAGE:
         handle_send_public_message(sock);
+        display_menu();
         break;
 
     case SEND_PRIVATE_MESSAGE:
@@ -297,7 +299,6 @@ void handle_save()
             printf("\033[1;32mSave loaded successfully!\033[0m\n");
             printf("save: %s\n", save[save_index]);
             demo_partie(save[save_index]);
-            sleep(2);
             display_menu();
             return;
         }
@@ -311,27 +312,62 @@ void handle_save()
     }
 }
 
-void demo_partie(const char *buffer)
-{
-    printf("Demo partie\n");
+void demo_partie(const char *buffer) {
+    char *temp_buffer = malloc(strlen(buffer) + 2); // +2 pour ':' et '\0'
+    if (!temp_buffer) {
+        perror("Erreur allocation mémoire");
+        return;
+    }
     
-    char * date = strtok(buffer, "_");
-    char * challenger = strtok(NULL, ":");
-    char * challenged = strtok(NULL, ":");
-
+    strcpy(temp_buffer, buffer);
+    strcat(temp_buffer, ":");
+    
+    char *saveptr;
+    char *date = strtok_r(temp_buffer, "_", &saveptr);
+    char *challenger = strtok_r(NULL, ":", &saveptr);
+    char *challenged = strtok_r(NULL, ":", &saveptr);
+    
     printf("date: %s\n", date);
-    printf("challenger: %s\n", challenger);
-    printf("challenged: %s\n", challenged);
-
-    // Display the game
-    char * tour = strtok(NULL, ":");
+    printf("challenger (joueur 1): %s\n", challenger);
+    printf("challenged (joueur 2): %s\n", challenged);
+    
+    JeuAwale jeu;
+    initialiser_plateau(&jeu);
+    afficher_plateau(&jeu);
+    
+    char *tour = strtok_r(NULL, ":", &saveptr);
     int tour_int = atoi(tour);
-
-    char * coup = strtok(NULL, ":");
-    int coup_int = atoi(coup);
-    //TODO tant qu'on a un coup à jouer (on arrive pas à la fin de la laste) on le joue (avec un sleep de 2 secondes) 
-    //+ affichage du plateau + affichage du score + affichage du joueur qui doit jouer
-    //TODO affichage du gagnant
+    
+    if (tour_int == 1) {
+        printf("C'est %s qui a commencé (0-5)\n", challenger);
+    } else {
+        printf("C'est %s qui a commencé (6-11)\n", challenged);
+    }
+    
+    sleep(2);
+    char *coup = strtok_r(NULL, ":", &saveptr);
+    
+    while (coup != NULL) {
+        int coup_int = atoi(coup);
+        printf("\n");
+        printf("Coup joué: %d\n", coup_int);
+        jouer_coup(&jeu, tour_int, coup_int);
+        afficher_plateau(&jeu);
+        sleep(2);
+        coup = strtok_r(NULL, ":", &saveptr);
+        tour_int = (tour_int == 1) ? 2 : 1;
+    }
+    printf("\n");
+    printf("Fin de la partie\n");
+    printf("Score final: J1: %d, J2: %d\n", jeu.score_joueur1, jeu.score_joueur2);
+    
+    if (jeu.score_joueur1 == jeu.score_joueur2) {
+        printf("Match nul!\n");
+    } else {
+        printf("Le gagnant est %s!\n", (jeu.score_joueur1 > jeu.score_joueur2) ? challenger : challenged);
+    }
+    
+    free(temp_buffer);
 }
 
 
@@ -844,9 +880,9 @@ void clear_screen_custom()
  * @param address Server address to connect to.
  * @param name User's name (not used in the current implementation).
  */
-void app(const char *address)
+void app(const char *address, int port)
 {
-    SOCKET sock = init_connection(address);
+    SOCKET sock = init_connection(address, port);
     char buffer[BUF_SIZE];
     fd_set rdfs;
 

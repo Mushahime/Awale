@@ -28,7 +28,6 @@ typedef struct in_addr IN_ADDR;
 #endif
 
 #define CRLF "\r\n"
-#define PORT 1978
 #define MAX_CLIENTS 100
 #define BUF_SIZE 1024
 #define MAX_BIO_LENGTH 1000
@@ -76,7 +75,7 @@ extern int partie_count;
 // Prototypes de fonctions
 void init(void);
 void end(void);
-int init_connection(void);
+int init_connection(int port);
 void end_connection(int sock);
 void remove_partie(int index, Client *clients);
 Client *findClientByPseudo(Client *clients, int actual, const char *name);

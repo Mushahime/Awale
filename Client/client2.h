@@ -25,7 +25,6 @@ typedef struct in_addr IN_ADDR;
 #endif
 
 #define CRLF     "\r\n"
-#define PORT     1978
 #define BUF_SIZE 1024
 #define BUF_SAVE_SIZE 3000
 #define MAX_BIO_LENGTH 1000
@@ -57,7 +56,7 @@ void demo_partie(const char *buffer);
 void saver(SOCKET sock, char *buffer);
 void display_menu();
 void clear_screen_custom();
-void app(const char *address);
+void app(const char *address, int port);
 void process_awale_message(SOCKET sock, char *msg_body);
 void process_error_message(SOCKET sock, char *buffer);
 void process_fight_message(SOCKET sock, char *buffer);
