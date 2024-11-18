@@ -585,6 +585,7 @@ void handle_private_message(Client *clients, int actual, int sender_index, const
     char error_msg[BUF_SIZE];
     snprintf(error_msg, BUF_SIZE, "User %s not found.\n", target_pseudo);
     write_client(clients[sender_index].sock, error_msg);
+    free(msg_start);
 }
 
 void list_connected_clients(Client *clients, int actual, int requester_index)

@@ -17,7 +17,7 @@
 #endif
 }
 
- int init_connection(const char *address) {
+ int init_connection(const char *address, int port) {
     SOCKET sock = socket(AF_INET, SOCK_STREAM, 0);
     SOCKADDR_IN sin = { 0 };
     struct hostent *hostinfo;
@@ -34,7 +34,7 @@
     }
     
     sin.sin_addr = *(IN_ADDR *) hostinfo->h_addr;
-    sin.sin_port = htons(PORT);
+    sin.sin_port = htons(port);
     sin.sin_family = AF_INET;
     
     if(connect(sock, (SOCKADDR *) &sin, sizeof(SOCKADDR)) == SOCKET_ERROR) {

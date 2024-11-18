@@ -9,10 +9,9 @@
 #include <sys/select.h>
 #include "utilsServer.h"
 
-
-static void app(void)
+static void app(int port)
 {
-    SOCKET sock = init_connection();
+    SOCKET sock = init_connection(port);
     char buffer[BUF_SIZE];
     int actual = 0;
     int max = sock;
@@ -184,9 +183,14 @@ int main(int argc, char **argv)
 {
 
     init();
+    if (argc > 2 || argc < 2 || atoi(argv[1]) < 1024 || atoi(argv[1]) > 65535)
+    {
+        printf("Error: arguments error\n");
+        return EXIT_FAILURE;
+    }
 
-    printf("Server started on port %d\n", PORT);
-    app();
+    printf("Server started on port %s\n", argv[1]);
+    app(atoi(argv[1]));
 
     end();
 

@@ -32,7 +32,7 @@ void end(void)
     WSACleanup();
 #endif
 }
-int init_connection(void)
+int init_connection(int port)
 {
     SOCKET sock = socket(AF_INET, SOCK_STREAM, 0);
     SOCKADDR_IN sin = {0};
@@ -44,7 +44,7 @@ int init_connection(void)
     }
 
     sin.sin_addr.s_addr = htonl(INADDR_ANY);
-    sin.sin_port = htons(PORT);
+    sin.sin_port = htons(port);
     sin.sin_family = AF_INET;
 
     if (bind(sock, (SOCKADDR *)&sin, sizeof(sin)) == SOCKET_ERROR)
@@ -130,37 +130,46 @@ void clear_clients(Client *clients, int actual)
 
 void remove_client(Client *clients, int to_remove, int *actual)
 {
-    // Si le client était dans une partie
-    if (clients[to_remove].partie_index != -1)
-    {
+    // D'abord vérifier et nettoyer les challenges
+    int challenge_index = find_challenge(clients[to_remove].name);
+    if (challenge_index != -1) {
+        const char *challenger = awale_challenges[challenge_index].challenger;
+        const char *challenged = awale_challenges[challenge_index].challenged;
+        const char *other_player = strcmp(clients[to_remove].name, challenger) == 0 ? challenged : challenger;
+        
+        for (int i = 0; i < *actual; i++) {
+            if (strcmp(clients[i].name, other_player) == 0) {
+                char msg[BUF_SIZE];
+                snprintf(msg, BUF_SIZE, "\033[1;31mChallenge annulé : %s s'est déconnecté\033[0m\n", 
+                        clients[to_remove].name);
+                write_client(clients[i].sock, msg);
+                break;
+            }
+        }
+        remove_challenge(challenge_index);
+    }
+
+    // Ensuite gérer la partie en cours (code existant)
+    if (clients[to_remove].partie_index != -1) {
         int partie_index = clients[to_remove].partie_index;
         PartieAwale *partie = &awale_parties[partie_index];
         char msg[BUF_SIZE];
         char *disconnected_player = clients[to_remove].name;
-
-        // Trouver l'autre joueur et lui envoyer la notification
-        for (int i = 0; i < *actual; i++)
-        {
-            if (i != to_remove && clients[i].partie_index == partie_index)
-            {
-                // Vérifier si c'est bien l'autre joueur de la partie
+        
+        for (int i = 0; i < *actual; i++) {
+            if (i != to_remove && clients[i].partie_index == partie_index) {
                 if (strcmp(clients[i].name, partie->awale_challenge.challenger) == 0 ||
-                    strcmp(clients[i].name, partie->awale_challenge.challenged) == 0)
-                {
-                    // Envoyer le message de fin de partie en rouge
-                    snprintf(msg, BUF_SIZE, "\033[1;31mGame over! %s has left the game\033[0m\n", 
+                    strcmp(clients[i].name, partie->awale_challenge.challenged) == 0) {
+                    snprintf(msg, BUF_SIZE, "\033[1;31mGame over! %s has left the game\033[0m\n",
                             disconnected_player);
                     write_client(clients[i].sock, msg);
                     clients[i].partie_index = -1;
                 }
             }
         }
-
-        // Supprimer la partie
         remove_partie(partie_index, clients);
     }
 
-    // Déplacer le client à supprimer avant d'envoyer le message
     memmove(clients + to_remove, clients + to_remove + 1, (*actual - to_remove - 1) * sizeof(Client));
     (*actual)--;
 }
