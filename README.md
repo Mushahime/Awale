@@ -16,5 +16,4 @@ warning : listen socket is like a FIFO for the connection and pseudo is unique
 
 Abde :
 5 -> mode observateur
-6 -> chat (mp pendant la game) + switch case pendant le jeu
 8 -> spectateur (revoir l'envoie des parties) 
