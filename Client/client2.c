@@ -12,8 +12,6 @@
 // Constants
 #define MAX_INPUT_LENGTH 256
 
-
-
 // Enumerations for Menu Choices
 typedef enum
 {
@@ -170,6 +168,8 @@ void handle_user_input(SOCKET sock)
 
     case PLAY_AWALE:
         handle_play_awale(sock);
+        handle_privacy(sock);
+        handle_allowed_spectators(sock);
         break;
 
     case LIST_GAMES_IN_PROGRESS:
@@ -289,6 +289,26 @@ void handle_bio_options(SOCKET sock)
  *
  * @param sock The socket connected to the server.
  */
+// void handle_play_awale(SOCKET sock)
+// {
+//     char buffer[BUF_SIZE];
+//     char input[BUF_SIZE];
+
+//     printf("\033[1;34mEnter the nickname of the player you want to play against: \033[0m");
+//     if (fgets(buffer, sizeof(buffer), stdin) != NULL)
+//     {
+//         buffer[strcspn(buffer, "\n")] = '\0'; // Remove newline
+//         snprintf(input, sizeof(input), "awale:%s", buffer);
+//         write_server(sock, input);
+//         printf("Waiting for response...\n");
+//     }
+// }
+
+/**
+ * @brief Handles initiating a game of Awale.
+ *
+ * @param sock The socket connected to the server.
+ */
 void handle_play_awale(SOCKET sock)
 {
     char buffer[BUF_SIZE];
@@ -300,9 +320,96 @@ void handle_play_awale(SOCKET sock)
         buffer[strcspn(buffer, "\n")] = '\0'; // Remove newline
         snprintf(input, sizeof(input), "awale:%s", buffer);
         write_server(sock, input);
-        printf("Waiting for response...\n");
+        printf("Challenge sent to %s. Waiting for response...\n", buffer);
+
+        // After sending the challenge, prompt for privacy settings
+        handle_privacy(sock);
     }
 }
+
+/**
+ * @brief Handles setting the privacy of the game after initiating Awale.
+ *
+ * @param sock The socket connected to the server.
+ */
+void handle_privacy(SOCKET sock)
+{
+    char buffer[BUF_SIZE];
+    char input[BUF_SIZE];
+    printf("\033[1;34mDo you want to set the game to be private? (yes/no): \033[0m");
+    if (fgets(buffer, sizeof(buffer), stdin) != NULL)
+    {
+        buffer[strcspn(buffer, "\n")] = '\0'; // Remove newline
+
+        // Validate input
+        if (strcasecmp(buffer, "yes") == 0 || strcasecmp(buffer, "no") == 0)
+        {
+            snprintf(input, sizeof(input), "privacy:%s", buffer);
+            write_server(sock, input);
+            printf("Privacy setting '%s' sent to server.\n", buffer);
+
+            if (strcasecmp(buffer, "yes") == 0)
+            {
+                // If private, prompt to set spectators
+                handle_allowed_spectators(sock);
+            }
+            else
+            {
+                // If public, no need to set spectators
+                printf("Game set to public. All connected users can be spectators.\n");
+            }
+        }
+        else
+        {
+            printf("\033[1;31mInvalid input. Please enter 'yes' or 'no'.\033[0m\n");
+            handle_privacy(sock); // Retry setting privacy
+        }
+    }
+}
+
+/**
+ * @brief Handles setting allowed spectators for a private game.
+ *
+ * @param sock The socket connected to the server.
+ */
+void handle_allowed_spectators(SOCKET sock)
+{
+    char buffer[BUF_SIZE];
+    char input[BUF_SIZE];
+    printf("\033[1;34mEnter the names of the players you want to add as spectators (separated by commas): \033[0m");
+    if (fgets(buffer, sizeof(buffer), stdin) != NULL)
+    {
+        buffer[strcspn(buffer, "\n")] = '\0'; // Remove newline
+
+        // Validate input: ensure that it's not empty when setting spectators for a private game
+        if (strlen(buffer) == 0)
+        {
+            printf("\033[1;31mNo spectators entered. Please enter at least one name.\033[0m\n");
+            handle_allowed_spectators(sock); // Retry setting spectators
+            return;
+        }
+
+        // Optionally, validate the format of spectator names (e.g., allowed characters)
+
+        snprintf(input, sizeof(input), "spectators:%s", buffer);
+        write_server(sock, input);
+        printf("Spectator list sent to server.\n");
+    }
+}
+
+
+// void handle_allowed_spectators(SOCKET sock)
+// {
+//     char buffer[BUF_SIZE];
+//     char input[BUF_SIZE];
+//     printf("\033[1;34mEnter the names of the players you want to add as spectators (separated by commas): \033[0m");
+//     if (fgets(buffer, sizeof(buffer), stdin) != NULL)
+//     {
+//         buffer[strcspn(buffer, "\n")] = '\0'; // Remove newline
+//         snprintf(input, sizeof(input), "spectators:%s", buffer);
+//         write_server(sock, input);
+//     }
+// }
 
 /**
  * @brief Handles requesting the list of games in progress from the server.

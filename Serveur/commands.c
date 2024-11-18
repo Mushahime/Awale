@@ -110,6 +110,36 @@ void remove_challenge(int index)
     }
 }
 
+void handle_privacy(Client *clients, int actual, int client_index, const char *buffer)
+{
+    write_client(clients[client_index].sock, "error handling privacy");
+
+    PartieAwale *partieAwale = &awale_parties[clients[client_index].partie_index];
+    char response[BUF_SIZE];
+
+    // Extract the privacy setting after "privacy:"
+    const char *setting = buffer + strlen("privacy:");
+
+    if (strcmp(setting, "yes") == 0)
+    {
+        snprintf(response, sizeof(response), "Your privacy has been set to private.\n");
+        partieAwale->prive = 1;
+        write_client(clients[client_index].sock, response);
+    }
+    else if (strcmp(setting, "no") == 0)
+    {
+        partieAwale->prive = 0;
+        snprintf(response, sizeof(response), "Your privacy has been set to public.\n");
+        write_client(clients[client_index].sock, response);
+    }
+    else
+    {
+        snprintf(response, sizeof(response), "Invalid privacy setting. Use 'privacy:yes' or 'privacy:no'.\n");
+        write_client(clients[client_index].sock, response);
+    }
+    printf("finished dealing with privacy");
+}
+
 void handle_awale_response(Client *clients, int actual, int client_index, const char *response)
 {
     int challenge_index = find_challenge(clients[client_index].name);
@@ -451,7 +481,7 @@ void handle_awale_list(Client *clients, int actual, int client_index)
 void addSpectator(PartieAwale *partieAwale, Client newSpectator)
 {
     int current_size = partieAwale->nbSpectators + 1;
-    int *temp = realloc(partieAwale->spectators, current_size * sizeof(int)); // Reallocate memory
+    Client *temp = realloc(partieAwale->spectators, current_size * sizeof(Client)); // Reallocate memory
     if (temp == NULL)
     {
         perror("Failed to reallocate memory");
@@ -463,6 +493,14 @@ void addSpectator(PartieAwale *partieAwale, Client newSpectator)
     partieAwale->nbSpectators += 1;
 }
 
+void allowAll(Client *clients, int actual, PartieAwale *partieAwale)
+{
+    for (int i = 0; i < actual; i++)
+    {
+        partieAwale->spectators[i] = clients[i];
+    }
+    partieAwale->nbSpectators = actual;
+}
 void initSpectators(Client *clients, int actual, PartieAwale *partieAwale) // remember to free this memory
 {
     int initialSize = partieAwale->nbSpectators;
@@ -479,14 +517,168 @@ void initSpectators(Client *clients, int actual, PartieAwale *partieAwale) // re
     }
 }
 
-
-void allowAll(Client *clients, int actual, PartieAwale *partieAwale)
+void handle_spectators(Client *clients, int actual, int client_index, const char *buffer)
 {
-    for (int i = 0; i < actual; i++)
+    // The buffer contains "spectators:<list of spectators>"
+    // Extract the list of spectator names
+    write_client(clients[client_index].sock, "error handling spectators");
+    const char *spectators_list = buffer + strlen("spectators:");
+    char spectators_buffer[BUF_SIZE];
+    strncpy(spectators_buffer, spectators_list, BUF_SIZE - 1);
+    spectators_buffer[BUF_SIZE - 1] = '\0';
+
+    // Check if the client is in a game
+    int partie_index = clients[client_index].partie_index;
+    if (partie_index == -1)
     {
-        partieAwale->spectators[i] = clients[i];
+        // The client is not in a game
+        char error_msg[BUF_SIZE];
+        snprintf(error_msg, BUF_SIZE, "You are not currently in a game.\n");
+        write_client(clients[client_index].sock, error_msg);
+        return;
     }
-    partieAwale->nbSpectators = actual;
+
+    // Get the game instance
+    PartieAwale *partie = &awale_parties[partie_index];
+
+    if (partie->prive)
+    {
+        // Handle private game: add specified spectators
+
+        // Initialize spectators if not already initialized
+        if (partie->spectators == NULL)
+        {
+            partie->spectators = malloc(sizeof(Client) * 100); // Define MAX_SPECTATORS as needed
+            if (partie->spectators == NULL)
+            {
+                perror("Failed to allocate memory for spectators");
+                exit(EXIT_FAILURE);
+            }
+            partie->nbSpectators = 0;
+        }
+
+        // Parse the spectator names (comma-separated)
+        char *token;
+        char *rest = spectators_buffer;
+        while ((token = strtok_r(rest, ",", &rest)))
+        {
+            // Trim leading whitespace
+            while (isspace((unsigned char)*token))
+                token++;
+
+            // Trim trailing whitespace
+            char *end = token + strlen(token) - 1;
+            while (end > token && isspace((unsigned char)*end))
+                end--;
+            *(end + 1) = '\0';
+
+            if (strlen(token) == 0)
+                continue; // Skip empty names
+
+            // Find the client with this name
+            int spectator_found = 0;
+            for (int i = 0; i < actual; i++)
+            {
+                if (strcasecmp(clients[i].name, token) == 0)
+                {
+                    spectator_found = 1;
+
+                    // Check if the spectator is already in the spectators list
+                    int already_spectator = 0;
+                    for (int j = 0; j < partie->nbSpectators; j++)
+                    {
+                        if (partie->spectators[j].sock == clients[i].sock)
+                        {
+                            already_spectator = 1;
+                            break;
+                        }
+                    }
+
+                    if (already_spectator)
+                    {
+                        char msg[BUF_SIZE];
+                        snprintf(msg, BUF_SIZE, "User %s is already a spectator.\n", token);
+                        write_client(clients[client_index].sock, msg);
+                    }
+                    else
+                    {
+                        // Add the spectator to the game
+                        addSpectator(partie, clients[i]);
+
+                        // Inform the spectator
+                        char msg[BUF_SIZE];
+                        snprintf(msg, BUF_SIZE, "You have been added as a spectator to the game between %s and %s.\n",
+                                 partie->awale_challenge.challenger,
+                                 partie->awale_challenge.challenged);
+                        write_client(clients[i].sock, msg);
+
+                        // Send the current game state to the spectator
+                        char game_state[BUF_SIZE];
+                        construct_game_state_message(partie, game_state, BUF_SIZE);
+                        write_client(clients[i].sock, game_state);
+                    }
+                    break;
+                }
+            }
+
+            if (!spectator_found)
+            {
+                char error_msg[BUF_SIZE];
+                snprintf(error_msg, BUF_SIZE, "User %s not found.\n", token);
+                write_client(clients[client_index].sock, error_msg);
+            }
+        }
+
+        // Send confirmation to the client
+        char response[BUF_SIZE];
+        snprintf(response, BUF_SIZE, "Spectators have been updated for your private game.\n");
+        write_client(clients[client_index].sock, response);
+    }
+    else
+    {
+        // Handle public game: allow all clients as spectators
+        allowAll(clients, actual, partie);
+
+        // Inform all spectators
+        char msg[BUF_SIZE];
+        snprintf(msg, BUF_SIZE, "All connected clients have been added as spectators to the game between %s and %s.\n",
+                 partie->awale_challenge.challenger,
+                 partie->awale_challenge.challenged);
+
+        for (int i = 0; i < partie->nbSpectators; i++)
+        {
+            write_client(partie->spectators[i].sock, msg);
+
+            // Optionally, send the current game state to each spectator
+            char game_state[BUF_SIZE];
+            construct_game_state_message(partie, game_state, BUF_SIZE);
+            write_client(partie->spectators[i].sock, game_state);
+        }
+
+        // Send confirmation to the client
+        char response[BUF_SIZE];
+        snprintf(response, BUF_SIZE, "All connected clients have been added as spectators to your public game.\n");
+        write_client(clients[client_index].sock, response);
+    }
+}
+
+void construct_game_state_message(PartieAwale *partie, char *message, size_t message_size)
+{
+    JeuAwale *jeu = &partie->jeu;
+    int offset = 0;
+    offset += snprintf(message, message_size, "AWALE:");
+    // Add the board values
+    for (int i = 0; i < TAILLE_PLATEAU; i++)
+    {
+        offset += snprintf(message + offset, message_size - offset, "%d:", jeu->plateau[i]);
+    }
+
+    // Add the current player's name and turn number
+    const char *current_player = (partie->tour == 1) ? partie->awale_challenge.challenger : partie->awale_challenge.challenged;
+    offset += snprintf(message + offset, message_size - offset, "%s:%d", current_player, partie->tour);
+
+    // Add the scores of the players
+    offset += snprintf(message + offset, message_size - offset, ":%d:%d", jeu->score_joueur1, jeu->score_joueur2);
 }
 
 void clearSpectators(PartieAwale *PartieAwale)
@@ -502,7 +694,7 @@ void stream_move(SOCKET sock, const char *buffer, PartieAwale *partieAwale)
     for (int i = 0; i < partieAwale->nbSpectators; i++)
     {
 
-        if (player1->sock == partieAwale->spectators[i].sock || player2-sock==partieAwale->spectators[i].sock )
+        if (player1->sock == partieAwale->spectators[i].sock || player2 - sock == partieAwale->spectators[i].sock)
         {
             continue;
         }

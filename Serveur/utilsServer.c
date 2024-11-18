@@ -2,6 +2,7 @@
 #include "server2.h"
 #include <errno.h>
 #include <sys/select.h>
+#include <string.h>
 
 void init(void)
 {
@@ -199,3 +200,4 @@ Client *findClientByPseudo(Client *clients, int actual, const char *name)
 
     return NULL;
 }
+

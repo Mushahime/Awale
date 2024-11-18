@@ -13,7 +13,7 @@
 #include <stdbool.h>
 #include <pthread.h>
 #include <stdlib.h>
-
+#include <string.h>
 #include "../awale.h"
 #define INVALID_SOCKET -1
 #define SOCKET_ERROR -1
@@ -94,7 +94,7 @@ extern "C"
     int read_client(SOCKET sock, char *buffer);
     void write_client(SOCKET sock, const char *buffer);
     void send_message_to_all_clients(Client *clients, Client sender, int actual, const char *buffer, char from_server);
-
+    int get_awale_game_index(PartieAwale *partieAwale);
 #ifdef __cplusplus
 }
 #endif

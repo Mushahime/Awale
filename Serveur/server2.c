@@ -145,6 +145,7 @@ static void app(void)
                         }
                         else if (strncmp(buffer, "awale:", 6) == 0)
                         {
+
                             handle_awale_challenge(clients, actual, i, buffer + 6);
                         }
                         else if (strncmp(buffer, "awale_response:", 15) == 0)
@@ -158,6 +159,14 @@ static void app(void)
                         else if (strncmp(buffer, "awale_list:", 11) == 0)
                         {
                             handle_awale_list(clients, actual, i);
+                        }
+                        else if (strncmp(buffer, "privacy:", 8) == 0)
+                        {
+                            handle_privacy(clients,  actual,  i, buffer +8);
+                        }
+                        else if (strncmp(buffer, "spectators:", 11) == 0)
+                        {
+                            handle_spectators(clients, actual, i, buffer);
                         }
                         else
                         {
