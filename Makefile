@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wimplicit-function-declaration -Wunused-function -Wextra -Wno-format-truncation -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-variable -g -pthread
+CFLAGS = -Wall -Wimplicit-function-declaration -Wunused-function -Wextra -Wno-format-truncation -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-variable -g -pthread -lm 
 
 CLIENT_DIR = Client
 SERVER_DIR = Serveur
@@ -20,13 +20,13 @@ all: server client awale
 
 # Règles de compilation des exécutables
 server: $(SERVER_OBJS)
-	$(CC) $(CFLAGS) -o $(SERVER_DIR)/server $(SERVER_OBJS)
+	$(CC) $(CFLAGS) -o $(SERVER_DIR)/server $(SERVER_OBJS) -lm
 
 client: $(CLIENT_OBJS)
-	$(CC) $(CFLAGS) -o $(CLIENT_DIR)/client $(CLIENT_OBJS)
+	$(CC) $(CFLAGS) -o $(CLIENT_DIR)/client $(CLIENT_OBJS) -lm
 
 awale: $(AWALE_OBJS)
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ -lm
 
 # Règles de compilation des objets du serveur
 $(SERVER_DIR)/server2.o: $(SERVER_DIR)/server2.c $(SERVER_DIR)/server2.h $(SERVER_DIR)/utilsServer.h $(SERVER_DIR)/commands.h awale.h

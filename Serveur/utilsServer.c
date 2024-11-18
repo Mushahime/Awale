@@ -212,3 +212,21 @@ Client *findClientByPseudo(Client *clients, int actual, const char *name)
 
     return NULL;
 }
+
+/*Client *findClientIndexByPseudo(Client *clients, int actual, const char *name)
+{
+    if (clients == NULL || name == NULL)
+    {
+        return NULL;
+    }
+
+    for (int i = 0; i < actual; i++)
+    {
+        if (!strcmp(name, clients[i].name))
+        {
+            return i; // Return index of the matching client
+        }
+    }
+
+    return -1;
+}*/

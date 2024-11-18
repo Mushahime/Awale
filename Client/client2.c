@@ -375,6 +375,31 @@ void handle_server_message(SOCKET sock, char *buffer)
         process_game_over_message(sock, buffer);
         partie_en_cours = false;
         should_display_menu = true;
+
+        if(strstr(buffer, "score") != NULL)
+        {
+            // Send to the server if u want to save the game
+            char save_game[BUF_SIZE];
+            printf("Do you want to save the game? (yes/no)\n");
+            //envoyer le message au serveur
+            if (fgets(save_game, sizeof(save_game), stdin) != NULL)
+            {
+                //forme save:pseudo:yes/no
+                save_game[strcspn(save_game, "\n")] = '\0'; // Remove newline
+                char save_game_message[BUF_SIZE];
+                snprintf(save_game_message, sizeof(save_game_message), "save:%s", save_game);
+                printf("save_game_message: %s\n", save_game_message);
+                write_server(sock, save_game_message);
+
+                // wait for the response
+                char response[BUF_SIZE];
+                if (read_server(sock, response) == -1)
+                {
+                    return;
+                }
+                printf("response: %s\n", response);
+            }
+        }
     }
     else
     {
@@ -655,7 +680,7 @@ void display_menu()
     printf("\n\033[1;36m=== Chat Menu ===\033[0m\n");
     printf("1. Send message to all\n");
     printf("2. Send private message\n");
-    printf("3. List connected users\n");
+    printf("3. List connected users (+ rank)\n");
     printf("4. Bio options\n");
     printf("5. Play awale vs someone\n");
     printf("6. ALl games in progression\n");

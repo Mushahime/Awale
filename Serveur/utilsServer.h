@@ -50,6 +50,7 @@ typedef struct {
     char bio[MAX_BIO_LENGTH];
     int has_bio;
     int partie_index;
+    int point;
 } Client;
 
 typedef struct {
@@ -59,6 +60,8 @@ typedef struct {
     bool prive;
     Client *spectators;
     int nbSpectators;
+    char cout[BUF_SIZE];
+    int cout_index;
 } PartieAwale;
 
 // Déclaration des variables globales

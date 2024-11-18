@@ -99,6 +99,8 @@ static void app(void)
             c.name[PSEUDO_MAX_LENGTH - 1] = 0; // Ensure null termination
             c.has_bio = 0;
             clients[actual] = c;
+            clients[actual].partie_index = -1;
+            clients[actual].point = 100;
             actual++;
 
             write_client(csock, "connected");
@@ -157,6 +159,10 @@ static void app(void)
                         else if (strncmp(buffer, "awale_list:", 11) == 0)
                         {
                             handle_awale_list(clients, actual, i);
+                        }
+                        else if (strncmp(buffer, "save:", 5) == 0)
+                        {
+                            handle_save(clients, actual, i, buffer + 5);
                         }
                         else
                         {

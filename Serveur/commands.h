@@ -16,6 +16,7 @@
 #include "utilsServer.h"
 #include <stdlib.h>
 #include "../awale.h"
+#include <math.h>
 #include "utilsServer.h"
 #define INVALID_SOCKET -1
 #define SOCKET_ERROR -1
@@ -39,6 +40,7 @@ void handle_awale_move(Client *clients, int actual, int client_index, const char
 void handle_awale_list(Client *clients, int actual, int client_index);
 void handle_bio_command(Client *clients, int actual, int client_index, const char *buffer);
 void handle_private_message(Client *clients, int actual, int sender_index, const char *buffer);
+void handle_save(Client *clients, int actual, int client_index, const char *buffer);
 
 void stream_move(SOCKET sock, const char *buffer, PartieAwale *partieAwale);
 void addSpectator(PartieAwale *partieAwale, Client newSpectator);

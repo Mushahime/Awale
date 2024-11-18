@@ -30,9 +30,13 @@ typedef struct in_addr IN_ADDR;
 #define MAX_BIO_LENGTH 1000
 #define PSEUDO_MAX_LENGTH 50
 #define PSEUDO_MIN_LENGTH 2
+#define MAX_PARTIES 25
 // Global Variables
 char pseudo[PSEUDO_MAX_LENGTH];
 bool partie_en_cours = false;
+char save[MAX_PARTIES][BUF_SIZE];
+int save_count = 0;
+
 
 // Function Prototypes
 void get_multiline_input(char *buffer, int max_size);

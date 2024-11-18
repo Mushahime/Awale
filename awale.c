@@ -236,7 +236,7 @@ bool nourrir_adversaire_possible(JeuAwale *jeu, int joueur)
 bool verifier_fin_partie(JeuAwale *jeu)
 {
     // Vérifier si un joueur a atteint ou dépassé 24 points
-    if (jeu->score_joueur1 >= 24 || jeu->score_joueur2 >= 24)
+    if (jeu->score_joueur1 >= 5 || jeu->score_joueur2 >= 5) // à changer c pour aller plus vite
     {
         // Ramasser toutes les graines restantes
         for (int i = 0; i < TAILLE_PLATEAU; i++)
