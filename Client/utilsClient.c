@@ -1,5 +1,8 @@
 #include "utilsClient.h"
 #include <string.h>
+#include <string.h>
+
+// Function to initialize the program
  void init(void) {
 #ifdef WIN32
     WSADATA wsa;
@@ -11,12 +14,15 @@
 #endif
 }
 
+// Function to end the program
  void end(void) {
 #ifdef WIN32
     WSACleanup();
 #endif
 }
 
+
+// Function to initialize the connection
  int init_connection(const char *address, int port) {
     SOCKET sock = socket(AF_INET, SOCK_STREAM, 0);
     SOCKADDR_IN sin = { 0 };
@@ -45,10 +51,14 @@
     return sock;
 }
 
+
+// Function to end a connection
  void end_connection(int sock) {
     closesocket(sock);
 }
 
+
+// Function to read from a server
  int read_server(SOCKET sock, char *buffer) {
     int n = 0;
     
@@ -61,6 +71,8 @@
     return n;
 }
 
+
+// Function to write to a server
  void write_server(SOCKET sock, const char *buffer) {
     if(send(sock, buffer, strlen(buffer), 0) < 0) {
         perror("send()");

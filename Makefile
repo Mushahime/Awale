@@ -4,7 +4,7 @@ CFLAGS = -Wall -Wdiscarded-qualifiers -Wimplicit-function-declaration -Wincompat
 CLIENT_DIR = Client
 SERVER_DIR = Serveur
 
-# Définition des objets pour chaque exécutable
+# Define the object files
 SERVER_OBJS = $(SERVER_DIR)/server2.o \
               $(SERVER_DIR)/utilsServer.o \
               $(SERVER_DIR)/commands.o \
@@ -12,13 +12,14 @@ SERVER_OBJS = $(SERVER_DIR)/server2.o \
 
 CLIENT_OBJS = $(CLIENT_DIR)/client2.o \
               $(CLIENT_DIR)/utilsClient.o \
+			  $(CLIENT_DIR)/commands.o \
               awale.o
 
 AWALE_OBJS = awale.o main.o
 
 all: server client awale
 
-# Règles de compilation des exécutables
+# Rules for executables
 server: $(SERVER_OBJS)
 	$(CC) $(CFLAGS) -o $(SERVER_DIR)/server $(SERVER_OBJS) -lm
 
@@ -28,7 +29,7 @@ client: $(CLIENT_OBJS)
 awale: $(AWALE_OBJS)
 	$(CC) $(CFLAGS) -o $@ $^ -lm
 
-# Règles de compilation des objets du serveur
+# Rules for object files -> server
 $(SERVER_DIR)/server2.o: $(SERVER_DIR)/server2.c $(SERVER_DIR)/server2.h $(SERVER_DIR)/utilsServer.h $(SERVER_DIR)/commands.h awale.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -38,21 +39,24 @@ $(SERVER_DIR)/utilsServer.o: $(SERVER_DIR)/utilsServer.c $(SERVER_DIR)/utilsServ
 $(SERVER_DIR)/commands.o: $(SERVER_DIR)/commands.c $(SERVER_DIR)/commands.h $(SERVER_DIR)/utilsServer.h awale.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Règles de compilation des objets du client
-$(CLIENT_DIR)/client2.o: $(CLIENT_DIR)/client2.c $(CLIENT_DIR)/client2.h $(CLIENT_DIR)/utilsClient.h awale.h
+# Rules for object files -> client
+$(CLIENT_DIR)/client2.o: $(CLIENT_DIR)/client2.c $(CLIENT_DIR)/client2.h $(CLIENT_DIR)/utilsClient.h $(CLIENT_DIR)/commands.h awale.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(CLIENT_DIR)/utilsClient.o: $(CLIENT_DIR)/utilsClient.c $(CLIENT_DIR)/utilsClient.h awale.h
+$(CLIENT_DIR)/commands.o: $(CLIENT_DIR)/commands.c $(CLIENT_DIR)/client2.h $(CLIENT_DIR)/utilsClient.h $(CLIENT_DIR)/commands.h awale.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Règles de compilation des objets awale
+$(CLIENT_DIR)/utilsClient.o: $(CLIENT_DIR)/utilsClient.c $(CLIENT_DIR)/utilsClient.h $(CLIENT_DIR)/commands.h awale.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Rules for object files -> awale
 awale.o: awale.c awale.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 main.o: main.c awale.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Nettoyage
+# Clean
 clean:
 	rm -f $(SERVER_DIR)/server $(CLIENT_DIR)/client awale
 	rm -f *.o $(SERVER_DIR)/*.o $(CLIENT_DIR)/*.o

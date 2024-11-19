@@ -8,28 +8,28 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-// Structure représentant l'état du jeu d'Awalé
+// Struct for the Awale game
 typedef struct
 {
-    int plateau[TAILLE_PLATEAU];
-    int score_joueur1;
-    int score_joueur2;
+    int plateau[TAILLE_PLATEAU]; // Game board (12 cases)
+    int score_joueur1; // Score of player 1
+    int score_joueur2; // Score of player 2
 } JeuAwale;
 
-// Fonction pour initialiser le plateau de jeu
+// Function to initialize the game board
 void initialiser_plateau(JeuAwale *jeu);
 
-// Fonction pour afficher l'état actuel du plateau
+// Function to display the game board
 void afficher_plateau(JeuAwale *jeu);
 void afficher_plateau2(int plateau[TAILLE_PLATEAU], int score_joueur1, int score_joueur2);
 
-// Fonction pour jouer un coup dans le jeu d'Awalé
+// Function to play a move
 bool jouer_coup(JeuAwale *jeu, int joueur, int case_depart);
 
-// Fonction pour vérifier si la partie est terminée
+// Function to check if the game is over
 bool verifier_fin_partie(JeuAwale *jeu);
 
-// Fonction pour gérer l'augmentation des scores
+// Function to check if a move is valid
 void mettre_a_jour_scores(JeuAwale *jeu, int joueur, int graines);
 
 #endif
