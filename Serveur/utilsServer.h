@@ -61,7 +61,7 @@ typedef struct
     JeuAwale jeu;
     int tour;   // 1 for player1, 2 for player2
     bool prive; // true if the game is private
-    Client *spectators;
+    Client spectators[MAX_CLIENTS];
     int nbSpectators;
 } PartieAwale;
 

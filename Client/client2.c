@@ -168,8 +168,6 @@ void handle_user_input(SOCKET sock)
 
     case PLAY_AWALE:
         handle_play_awale(sock);
-        handle_privacy(sock);
-        handle_allowed_spectators(sock);
         break;
 
     case LIST_GAMES_IN_PROGRESS:
@@ -326,53 +324,98 @@ void handle_play_awale(SOCKET sock)
         handle_privacy(sock);
     }
 }
+char* trim_whitespace(char *str)
+{
+    char *end;
+
+    // Trim leading space
+    while(isspace((unsigned char)*str)) str++;
+
+    if(*str == 0)  // All spaces?
+        return str;
+
+    // Trim trailing space
+    end = str + strlen(str) - 1;
+    while(end > str && isspace((unsigned char)*end)) end--;
+
+    // Write new null terminator
+    *(end+1) = '\0';
+
+    return str;
+}
 
 /**
- * @brief Handles setting the privacy of the game after initiating Awale.
+ * @brief Trims leading and trailing whitespace from a string.
  *
- * @param sock The socket connected to the server.
+ * @param str The string to trim.
+ * @return A pointer to the trimmed string.
+ */
+/**
+ * @brief Handles privacy settings for the game by prompting user input and communicating with server.
+ *
+ * @param sock The socket connection to the server.
+ * @return void
+ */
+/**
+ * @brief Handles privacy settings for the game.
+ *
+ * @param sock The socket connection to the server.
+ * @return void
  */
 void handle_privacy(SOCKET sock)
 {
     char buffer[BUF_SIZE];
-    char input[BUF_SIZE];
-    printf("\033[1;34mDo you want to set the game to be private? (yes/no): \033[0m");
-    if (fgets(buffer, sizeof(buffer), stdin) != NULL)
+
+    while (1)
     {
-        buffer[strcspn(buffer, "\n")] = '\0'; // Remove newline
+        printf("\033[1;34mDo you want to set the game to be private? (yes/no): \033[0m");
+        fflush(stdout);
 
-        // Validate input
-        if (strcasecmp(buffer, "yes") == 0 || strcasecmp(buffer, "no") == 0)
+        if (fgets(buffer, sizeof(buffer), stdin) == NULL)
         {
-            snprintf(input, sizeof(input), "privacy:%s", buffer);
-            write_server(sock, input);
-            printf("Privacy setting '%s' sent to server.\n", buffer);
+            printf("\n\033[1;31mInput error or EOF detected.\033[0m\n");
+            return;
+        }
 
-            if (strcasecmp(buffer, "yes") == 0)
+        // Remove newline
+        buffer[strcspn(buffer, "\n")] = '\0';
+        
+        // Convert to lowercase for comparison
+        for (int i = 0; buffer[i]; i++) {
+            buffer[i] = tolower(buffer[i]);
+        }
+
+        // Remove spaces
+        char *input = buffer;
+        while (*input == ' ') input++;  // Skip leading spaces
+
+        if (strcmp(input, "yes") == 0 || strcmp(input, "no") == 0)
+        {
+            // Format the exact command string the server expects
+            char command[20];  // Small fixed buffer for our simple command
+            sprintf(command, "privacy:%s", input);
+            
+            printf("DEBUG: Sending command: '%s'\n", command);
+            write_server(sock, command);
+
+            if (strcmp(input, "yes") == 0)
             {
-                // If private, prompt to set spectators
                 handle_allowed_spectators(sock);
-                printf("Game set to private.\n");
+                printf("\033[1;32mGame set to private.\033[0m\n");
             }
             else
             {
-                // If public, no need to set spectators
-                printf("Game set to public. All connected users can be spectators.\n");
+                printf("\033[1;32mGame set to public. All connected users can be spectators.\033[0m\n");
             }
+            return;
         }
         else
         {
             printf("\033[1;31mInvalid input. Please enter 'yes' or 'no'.\033[0m\n");
-            handle_privacy(sock); // Retry setting privacy
         }
     }
 }
 
-/**
- * @brief Handles setting allowed spectators for a private game.
- *
- * @param sock The socket connected to the server.
- */
 void handle_allowed_spectators(SOCKET sock)
 {
     char buffer[BUF_SIZE];
@@ -381,35 +424,10 @@ void handle_allowed_spectators(SOCKET sock)
     if (fgets(buffer, sizeof(buffer), stdin) != NULL)
     {
         buffer[strcspn(buffer, "\n")] = '\0'; // Remove newline
-
-        // Validate input: ensure that it's not empty when setting spectators for a private game
-        if (strlen(buffer) == 0)
-        {
-            printf("\033[1;31mNo spectators entered. Please enter at least one name.\033[0m\n");
-            handle_allowed_spectators(sock); // Retry setting spectators
-            return;
-        }
-
-        // Optionally, validate the format of spectator names (e.g., allowed characters)
-
         snprintf(input, sizeof(input), "spectators:%s", buffer);
         write_server(sock, input);
-        printf("Spectator list sent to server.\n");
     }
 }
-
-// void handle_allowed_spectators(SOCKET sock)
-// {
-//     char buffer[BUF_SIZE];
-//     char input[BUF_SIZE];
-//     printf("\033[1;34mEnter the names of the players you want to add as spectators (separated by commas): \033[0m");
-//     if (fgets(buffer, sizeof(buffer), stdin) != NULL)
-//     {
-//         buffer[strcspn(buffer, "\n")] = '\0'; // Remove newline
-//         snprintf(input, sizeof(input), "spectators:%s", buffer);
-//         write_server(sock, input);
-//     }
-// }
 
 /**
  * @brief Handles requesting the list of games in progress from the server.

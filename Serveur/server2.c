@@ -163,11 +163,10 @@ static void app(void)
                         }
                         else if (strncmp(buffer, "privacy:", 8) == 0)
                         {
-                            handle_privacy(clients,  actual,  i, buffer +8);
+                            handle_privacy(clients, actual, i, buffer);
                         }
                         else if (strncmp(buffer, "spectators:", 11) == 0)
                         {
-                            printf("handling the spectators");
                             handle_spectators(clients, actual, i, buffer);
                         }
                         else

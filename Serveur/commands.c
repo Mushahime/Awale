@@ -112,13 +112,15 @@ void remove_challenge(int index)
 
 void handle_privacy(Client *clients, int actual, int client_index, const char *buffer)
 {
-    write_client(clients[client_index].sock, "error handling privacy");
 
     PartieAwale *partieAwale = &awale_parties[clients[client_index].partie_index];
     char response[BUF_SIZE];
 
     // Extract the privacy setting after "privacy:"
     const char *setting = buffer + strlen("privacy:");
+    write_client(clients[client_index].sock, "\nreceived this when handling the privacy:");
+    write_client(clients[client_index].sock, setting);
+    write_client(clients[client_index].sock, "\n");
 
     if (strcmp(setting, "yes") == 0)
     {
@@ -478,20 +480,20 @@ void handle_awale_list(Client *clients, int actual, int client_index)
     write_client(clients[client_index].sock, list);
 }
 
-void addSpectator(PartieAwale *partieAwale, Client newSpectator)
-{
-    int current_size = partieAwale->nbSpectators + 1;
-    Client *temp = realloc(partieAwale->spectators, current_size * sizeof(Client)); // Reallocate memory
-    if (temp == NULL)
-    {
-        perror("Failed to reallocate memory");
-        free(partieAwale->spectators); // Free the old memory to avoid memory leaks
-        exit(EXIT_FAILURE);
-    }
-    partieAwale->spectators = temp;
-    partieAwale->spectators[current_size - 1] = newSpectator;
-    partieAwale->nbSpectators += 1;
-}
+// void addSpectator(PartieAwale *partieAwale, Client newSpectator)
+// {
+//     int current_size = partieAwale->nbSpectators + 1;
+//     Client *temp = realloc(partieAwale->spectators, current_size * sizeof(Client)); // Reallocate memory
+//     if (temp == NULL)
+//     {
+//         perror("Failed to reallocate memory");
+//         free(partieAwale->spectators); // Free the old memory to avoid memory leaks
+//         exit(EXIT_FAILURE);
+//     }
+//     partieAwale->spectators = temp;
+//     partieAwale->spectators[current_size - 1] = newSpectator;
+//     partieAwale->nbSpectators += 1;
+// }
 
 void allowAll(Client *clients, int actual, PartieAwale *partieAwale)
 {
@@ -519,7 +521,8 @@ void initSpectators(Client *clients, int actual, PartieAwale *partieAwale) // re
 void handle_spectators(Client *clients, int actual, int client_index, const char *buffer)
 {
     // Validate that buffer starts with "spectators:"
-    if (strncmp(buffer, "spectators:", 11) != 0) {
+    if (strncmp(buffer, "spectators:", 11) != 0)
+    {
         write_client(clients[client_index].sock, "Malformed spectators command.\n");
         return;
     }
@@ -533,7 +536,8 @@ void handle_spectators(Client *clients, int actual, int client_index, const char
     spectators_buffer[BUF_SIZE - 1] = '\0';
 
     // Validate client_index
-    if (client_index < 0 || client_index >= actual) {
+    if (client_index < 0 || client_index >= actual)
+    {
         write_client(clients[client_index].sock, "Invalid client index.\n");
         return;
     }
@@ -549,7 +553,8 @@ void handle_spectators(Client *clients, int actual, int client_index, const char
     }
 
     // Validate partie_index
-    if (partie_index < 0 || partie_index >= partie_count) { // assuming partie_count is the number of active games
+    if (partie_index < 0 || partie_index >= partie_count)
+    { // assuming partie_count is the number of active games
         char error_msg[BUF_SIZE];
         snprintf(error_msg, BUF_SIZE, "Invalid game index.\n");
         write_client(clients[client_index].sock, error_msg);
@@ -564,17 +569,8 @@ void handle_spectators(Client *clients, int actual, int client_index, const char
         // Handle private game: add specified spectators
 
         // Initialize spectators if not already initialized
-        if (partie->spectators == NULL)
+        if (partie->nbSpectators == NULL)
         {
-            partie->spectators = malloc(sizeof(Client) * MAX_CLIENTS);
-            if (partie->spectators == NULL)
-            {
-                perror("Failed to allocate memory for spectators");
-                char msg[BUF_SIZE];
-                snprintf(msg, BUF_SIZE, "Internal server error.\n");
-                write_client(clients[client_index].sock, msg);
-                return;
-            }
             partie->nbSpectators = 0;
         }
 
@@ -631,10 +627,11 @@ void handle_spectators(Client *clients, int actual, int client_index, const char
                             write_client(clients[client_index].sock, msg);
                             continue;
                         }
-                        
+
                         partie->spectators[partie->nbSpectators++] = clients[i];
 
                         // Inform the spectator
+                        write_client(clients[i].sock,"what is wrong again ?");
                         char msg[BUF_SIZE];
                         snprintf(msg, BUF_SIZE, "You have been added as a spectator to the game between %s and %s.\n",
                                  partie->awale_challenge.challenger,
@@ -690,7 +687,6 @@ void handle_spectators(Client *clients, int actual, int client_index, const char
         write_client(clients[client_index].sock, response);
     }
 }
-
 
 void construct_game_state_message(PartieAwale *partie, char *message, size_t message_size)
 {
