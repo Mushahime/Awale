@@ -1,5 +1,7 @@
 #include "utilsClient.h"
 #include <string.h>
+
+#include <string.h>
  void init(void) {
 #ifdef WIN32
     WSADATA wsa;

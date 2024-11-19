@@ -114,11 +114,21 @@ void handle_bio_command(Client *clients, int actual, int client_index, const cha
 
 int find_challenge(const char *name)
 {
-    // Ensuite vérifier les défis en cours
+    // vérifier les défis en cours
     for (int i = 0; i < challenge_count; i++) {
         if (strcmp(awale_challenges[i].challenger, name) == 0 ||
             strcmp(awale_challenges[i].challenged, name) == 0) {
             return i;
+        }
+    }
+
+    // check if the player is a spectator in a game
+    for (int i = 0; i < partie_count; i++) {
+        PartieAwale *partie = &awale_parties[i];
+        for (int j = 0; j < partie->nbSpectators; j++) {
+            if (strcmp(partie->Spectators[j].name, name) == 0) {
+                return i;
+            }
         }
     }
     return -1;
@@ -520,7 +530,7 @@ void handle_awale_move(Client *clients, int actual, int client_index, const char
                 }
             }
 
-            // ENvoyer le message de fin de partie aux spectateurs avec [Spectator] devant
+            // Envoyer le message de fin de partie aux spectateurs avec [Spectator] devant
             char end_msg_spectator[BUF_SIZE];
             snprintf(end_msg_spectator, BUF_SIZE, "[Spectator] %s\n", end_msg);
             for (int i = 0; i < partie->nbSpectators; i++)
@@ -853,69 +863,3 @@ void handle_awale_list(Client *clients, int actual, int client_index)
 
     write_client(clients[client_index].sock, list);
 }
-
-/*void addSpectator(PartieAwale *partieAwale, Client newSpectator)
-{
-    int current_size = partieAwale->nbSpectators + 1;
-    int *temp = realloc(partieAwale->spectators, current_size * sizeof(int)); // Reallocate memory
-    if (temp == NULL)
-    {
-        perror("Failed to reallocate memory");
-        free(partieAwale->spectators); // Free the old memory to avoid memory leaks
-        exit(EXIT_FAILURE);
-    }
-    partieAwale->spectators = temp;
-    partieAwale->spectators[current_size - 1] = newSpectator;
-    partieAwale->nbSpectators += 1;
-}*/
-
-/*void initSpectators(Client *clients, int actual, PartieAwale *partieAwale) // remember to free this memory
-{
-    int initialSize = partieAwale->nbSpectators;
-    partieAwale = malloc(initialSize * sizeof(Client));
-    Client *player1 = findClientByPseudo(clients, actual, partieAwale->awale_challenge.challenged);
-    if (player1 != NULL)
-    {
-        partieAwale->spectators[0] = *player1;
-    }
-    Client *player2 = findClientByPseudo(clients, actual, partieAwale->awale_challenge.challenger);
-    if (player2 != NULL)
-    {
-        partieAwale->spectators[1] = *player2;
-    }
-}*/
-
-
-/*void allowAll(Client *clients, int actual, PartieAwale *partieAwale)
-{
-    for (int i = 0; i < actual; i++)
-    {
-        partieAwale->spectators[i] = clients[i];
-    }
-    partieAwale->nbSpectators = actual;
-}
-
-void clearSpectators(PartieAwale *PartieAwale)
-{
-    free(PartieAwale->spectators);
-}
-
-void stream_move(SOCKET sock, const char *buffer, PartieAwale *partieAwale)
-{
-    char message[BUF_SIZE];
-    Client *player1 = findClientByPseudo(partieAwale->spectators, partieAwale->nbSpectators, partieAwale->awale_challenge.challenged);
-    Client *player2 = findClientByPseudo(partieAwale->spectators, partieAwale->nbSpectators, partieAwale->awale_challenge.challenger);
-    for (int i = 0; i < partieAwale->nbSpectators; i++)
-    {
-
-        if (player1->sock == partieAwale->spectators[i].sock || player2->sock==partieAwale->spectators[i].sock )
-        {
-            continue;
-        }
-        memset(message, 0, sizeof(message));
-        strncpy(message, buffer, BUF_SIZE - 1);
-        message[BUF_SIZE - 1] = '\0';
-        // Send the message to the spectators
-        write_client(partieAwale->spectators[i].sock, message);
-    }
-}*/

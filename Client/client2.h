@@ -5,6 +5,8 @@
 #ifdef WIN32
 #include <winsock2.h>
 #elif defined(__linux__) || defined(linux) || defined(__linux)
+
+// Includes
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -13,6 +15,19 @@
 #include <netdb.h>
 #include <stdbool.h>
 #include "utilsClient.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <string.h>
+#include <time.h>
+#include "client2.h"
+#include "../awale.h"
+#include <sys/select.h>
+#include <sys/time.h>
+#include "commands.h"
+
+// Constants
+#define MAX_INPUT_LENGTH 256
 #define INVALID_SOCKET -1
 #define SOCKET_ERROR -1
 #define closesocket(s) close(s)
@@ -23,7 +38,6 @@ typedef struct in_addr IN_ADDR;
 #else
 #error not defined for this platform
 #endif
-
 #define CRLF     "\r\n"
 #define BUF_SIZE 1024
 #define BUF_SAVE_SIZE 3000
@@ -31,42 +45,36 @@ typedef struct in_addr IN_ADDR;
 #define PSEUDO_MAX_LENGTH 50
 #define PSEUDO_MIN_LENGTH 2
 #define MAX_PARTIES 25
-// Global Variables
-char pseudo[PSEUDO_MAX_LENGTH];
-bool partie_en_cours = false;
-char save[MAX_PARTIES][BUF_SAVE_SIZE+BUF_SIZE];
-int save_count = 0;
-int save_index = 0;
 
+typedef enum
+{
+    SEND_PUBLIC_MESSAGE = 1,
+    SEND_PRIVATE_MESSAGE,
+    LIST_USERS,
+    BIO_OPTIONS,
+    PLAY_AWALE,
+    LIST_GAMES_IN_PROGRESS,
+    SEE_SAVE,
+    SPEC,
+    CLEAR_SCREEN,
+    QUIT
+} MenuChoice;
+
+// Global
+extern char pseudo[PSEUDO_MAX_LENGTH];
+extern bool partie_en_cours;
+extern char save[MAX_PARTIES][BUF_SAVE_SIZE+BUF_SIZE];
+extern int save_count;
+extern int save_index;
 
 // Function Prototypes
 void get_multiline_input(char *buffer, int max_size);
 int get_valid_pseudo(SOCKET sock);
-void handle_send_public_message(SOCKET sock);
-void handle_send_private_message(SOCKET sock);
-void handle_list_users(SOCKET sock);
-void handle_bio_options(SOCKET sock);
-void handle_play_awale(SOCKET sock);
-void handle_list_games(SOCKET sock);
-void handle_quit();
-void handle_user_input(SOCKET sock);
-void handle_server_message(SOCKET sock, char *buffer);
-void handle_save();
-void demo_partie(const char *buffer);
-void saver(SOCKET sock, char *buffer);
 void display_menu();
 void clear_screen_custom();
 void clear_screen_custom2();
 void app(const char *address, int port);
-void process_awale_message(SOCKET sock, char *msg_body);
-void process_error_message(SOCKET sock, char *buffer);
-bool process_fight_message(SOCKET sock, char *buffer);
-void process_game_over_message(SOCKET sock, char *buffer);
-void process_private_message(char *buffer);
-void process_system_message(char *buffer);
-void process_challenge_message(char *buffer);
-void prompt_for_move(SOCKET sock, int joueur, const char *nom, int plateau[], int score_joueur1, int score_joueur2);
-void prompt_for_new_move(SOCKET sock, int joueur);
-void handle_spec(SOCKET sock);
-void handle_quit_game(SOCKET sock);
+void handle_server_message(SOCKET sock, char *buffer);
+void handle_user_input(SOCKET sock);
+
 #endif /* guard */

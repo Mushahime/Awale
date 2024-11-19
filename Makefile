@@ -12,6 +12,7 @@ SERVER_OBJS = $(SERVER_DIR)/server2.o \
 
 CLIENT_OBJS = $(CLIENT_DIR)/client2.o \
               $(CLIENT_DIR)/utilsClient.o \
+			  $(CLIENT_DIR)/commands.o \
               awale.o
 
 AWALE_OBJS = awale.o main.o
@@ -39,10 +40,13 @@ $(SERVER_DIR)/commands.o: $(SERVER_DIR)/commands.c $(SERVER_DIR)/commands.h $(SE
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Règles de compilation des objets du client
-$(CLIENT_DIR)/client2.o: $(CLIENT_DIR)/client2.c $(CLIENT_DIR)/client2.h $(CLIENT_DIR)/utilsClient.h awale.h
+$(CLIENT_DIR)/client2.o: $(CLIENT_DIR)/client2.c $(CLIENT_DIR)/client2.h $(CLIENT_DIR)/utilsClient.h $(CLIENT_DIR)/commands.h awale.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(CLIENT_DIR)/utilsClient.o: $(CLIENT_DIR)/utilsClient.c $(CLIENT_DIR)/utilsClient.h awale.h
+$(CLIENT_DIR)/commands.o: $(CLIENT_DIR)/commands.c $(CLIENT_DIR)/client2.h $(CLIENT_DIR)/utilsClient.h $(CLIENT_DIR)/commands.h awale.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+$(CLIENT_DIR)/utilsClient.o: $(CLIENT_DIR)/utilsClient.c $(CLIENT_DIR)/utilsClient.h $(CLIENT_DIR)/commands.h awale.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 # Règles de compilation des objets awale

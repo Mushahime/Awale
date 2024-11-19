@@ -5,6 +5,8 @@
 #ifdef WIN32
 #include <winsock2.h>
 #elif defined(__linux__) || defined(linux) || defined(__linux)
+
+// Includes
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -18,6 +20,8 @@
 #include "../awale.h"
 #include <math.h>
 #include "utilsServer.h"
+
+// Constants
 #define INVALID_SOCKET -1
 #define SOCKET_ERROR -1
 #define closesocket(s) close(s)
@@ -28,6 +32,8 @@
 #error not defined for this platform
 #endif
 
+
+//Function declarations
 void clean_invalid_parties(Client *clients, int actual);
 int check_pseudo(Client *clients, int actual, const char *pseudo);
 void list_connected_clients(Client *clients, int actual, int requester_index);
@@ -43,12 +49,6 @@ void handle_private_message(Client *clients, int actual, int sender_index, const
 void handle_save(Client *clients, int actual, int client_index, const char *buffer);
 void handle_spec(Client *clients, int actual, int client_index, const char *buffer);
 void handle_quit_game(Client *clients, int actual, int client_index);
-
-//void stream_move(SOCKET sock, const char *buffer, PartieAwale *partieAwale);
-//void addSpectator(PartieAwale *partieAwale, Client newSpectator);
-//void initSpectators(Client *clients, int actual, PartieAwale *partieAwale);
-//void allowAll(Client *clients, int actual, PartieAwale *partieAwale);
-//void clearSpectators(PartieAwale *PartieAwale);
 
 
 #endif
