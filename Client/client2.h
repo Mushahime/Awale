@@ -56,6 +56,7 @@ void demo_partie(const char *buffer);
 void saver(SOCKET sock, char *buffer);
 void display_menu();
 void clear_screen_custom();
+void clear_screen_custom2();
 void app(const char *address, int port);
 void process_awale_message(SOCKET sock, char *msg_body);
 void process_error_message(SOCKET sock, char *buffer);

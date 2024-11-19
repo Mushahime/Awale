@@ -127,12 +127,50 @@ int find_challenge(const char *name)
 }
 
 // Fonction auxiliaire pour ajouter un défi
-void add_challenge(const char *challenger, const char *challenged)
+void add_challenge(const char *challenger, const char *challenged, const char *message_rest)
 {
+    printf("debug message rest : %s\n", message_rest);
     if (challenge_count < MAX_CHALLENGES)
     {
         strncpy(awale_challenges[challenge_count].challenger, challenger, PSEUDO_MAX_LENGTH - 1);
+        awale_challenges[challenge_count].challenger[PSEUDO_MAX_LENGTH - 1] = '\0'; // Ensure null termination
         strncpy(awale_challenges[challenge_count].challenged, challenged, PSEUDO_MAX_LENGTH - 1);
+        awale_challenges[challenge_count].challenger[PSEUDO_MAX_LENGTH - 1] = '\0'; // Ensure null termination
+
+        // form buffer yes/no:pseudo1,pseudo2,pseudo3
+        char message_copy[strlen(message_rest) + 1];
+        strcpy(message_copy, message_rest); // Make a copy of message_rest to avoid modifying the original string
+
+        char *prive = strtok(message_copy, ":");
+        if (prive == NULL)
+        {
+            awale_challenges[challenge_count].prive = false;
+            awale_challenges[challenge_count].private_spec[0][0] = '\0';
+            awale_challenges[challenge_count].private_spec_count = 0;
+        }
+        
+        if (strcmp(prive, "yes") == 0)
+        {
+            awale_challenges[challenge_count].prive = true;
+            // form pseudo1:pseudo2:pseudo3:
+            char *private_spec = strtok(NULL, ":");
+            while (private_spec != NULL)
+            {
+                printf("debug private spec : %s\n", private_spec);
+                int count = awale_challenges[challenge_count].private_spec_count;
+                strncpy(awale_challenges[challenge_count].private_spec[count], private_spec, PSEUDO_MAX_LENGTH - 1);
+                awale_challenges[challenge_count].private_spec[count][PSEUDO_MAX_LENGTH - 1] = '\0'; // Ensure null termination
+                awale_challenges[challenge_count].private_spec_count++;
+                private_spec = strtok(NULL, ":");
+            }
+
+        }
+        else
+        {
+            awale_challenges[challenge_count].prive = false;
+            awale_challenges[challenge_count].private_spec[0][0] = '\0';
+            awale_challenges[challenge_count].private_spec_count = 0;
+        }
         challenge_count++;
     }
 }
@@ -177,8 +215,6 @@ void handle_awale_response(Client *clients, int actual, int client_index, const 
 
         // Créer et initialiser la partie
         PartieAwale nouvelle_partie = {0};
-        nouvelle_partie.nbSpectators = 2;
-
         JeuAwale jeu;
         initialiser_plateau(&jeu);
         nouvelle_partie.jeu = jeu;
@@ -186,15 +222,11 @@ void handle_awale_response(Client *clients, int actual, int client_index, const 
         nouvelle_partie.tour = rand() % 2 + 1;
         printf("Debug - Tour initial : %d\n", nouvelle_partie.tour); // Debug
         nouvelle_partie.awale_challenge = awale_challenges[challenge_index];
-        /*nouvelle_partie.prive = false;
-        nouvelle_partie.spectators = malloc(2 * sizeof(Client));*/
         nouvelle_partie.cout[0] = '\0';
         nouvelle_partie.cout_index = 0;
         nouvelle_partie.in_save = false;
 
         nouvelle_partie.nbSpectators = 0;
-
-        nouvelle_partie.prive = false;
 
         // Mettre l'id dans les 2 clients
         for (int i = 0; i < actual; i++)
@@ -287,13 +319,25 @@ void handle_awale_response(Client *clients, int actual, int client_index, const 
     remove_challenge(challenge_index);
 }
 
-void handle_awale_challenge(Client *clients, int actual, int client_index, const char *target_pseudo)
+void handle_awale_challenge(Client *clients, int actual, int client_index, char *buffer)
 {
     // Vérifier si le challenger a déjà un défi en cours
     if (find_challenge(clients[client_index].name) != -1)
     {
         char response[BUF_SIZE];
         snprintf(response, BUF_SIZE, "You already have a pending challenge.\n");
+        write_client(clients[client_index].sock, response);
+        return;
+    }
+
+    char * target_pseudo = strtok(buffer, ":");
+    char * message_rest = strtok(NULL, "");
+    printf("buffer restant : %s\n", message_rest);
+
+    if (target_pseudo == NULL || message_rest == NULL)
+    {
+        char response[BUF_SIZE];
+        snprintf(response, BUF_SIZE, "Invalid challenge format.\n");
         write_client(clients[client_index].sock, response);
         return;
     }
@@ -314,7 +358,7 @@ void handle_awale_challenge(Client *clients, int actual, int client_index, const
             }
 
             // Ajouter le défi et envoyer la demande
-            add_challenge(clients[client_index].name, target_pseudo);
+            add_challenge(clients[client_index].name, target_pseudo, message_rest);
             char challenge_msg[BUF_SIZE];
             snprintf(challenge_msg, BUF_SIZE, "Awale fight request from %s\n",
                      clients[client_index].name);
@@ -435,8 +479,12 @@ void handle_awale_move(Client *clients, int actual, int client_index, const char
             int classement_challenged = challenged->point;
 
             // Maj du score des joueurs
-            float p_vict_challenger = 1/(1+pow(10, (classement_challenged-classement_challenger)/400));
-            float p_vict_challenged = 1/(1+pow(10, (classement_challenger-classement_challenged)/400));
+            float part_of_calcul_challenged = (float) (classement_challenger - classement_challenged) / 400;
+            float part_of_calcul_challenger = (float) (classement_challenged - classement_challenger) / 400;
+            float p_vict_challenger = 1/(1+pow(10, part_of_calcul_challenger));
+            float p_vict_challenged = 1/(1+pow(10, part_of_calcul_challenged));
+            printf("ratio challenger : %f\n", p_vict_challenger);
+            printf("ratio challenged : %f\n", p_vict_challenged);
 
             // Update des points
             if (jeu->score_joueur1 == jeu->score_joueur2)
@@ -454,6 +502,9 @@ void handle_awale_move(Client *clients, int actual, int client_index, const char
                 challenger->point += facteur*(0-p_vict_challenger);
                 challenged->point += facteur*(1-p_vict_challenged);
             }
+
+            printf("classement challenger : %d\n", challenger->point);
+            printf("classement challenged : %d\n", challenged->point);
 
             // In_save
             partie->in_save = true;
@@ -644,12 +695,45 @@ void handle_spec(Client *clients, int actual, int client_index, const char *buff
         return;
     }
 
+    if (player->partie_index == -1)
+    {
+        write_client(clients[client_index].sock, "FAIL:This player is not in a game\n");
+        return;
+    }
+
     PartieAwale * partie = &awale_parties[player->partie_index];
     if (partie == NULL || partie->nbSpectators >= MAX_CLIENTS || partie->in_save)
     {
         write_client(clients[client_index].sock, "FAIL:Cannot spectate this game (doesnt exist, not ready or forbidden)\n");
         return;
     }
+
+    AwaleChallenge * challenge = &partie->awale_challenge;
+    bool is_private = challenge->prive;
+    bool is_in_private_spec = false;
+
+    if (is_private)
+    {
+        for (int i = 0; i < challenge->private_spec_count; i++)
+        {
+            printf("debug private spec: %s\n", challenge->private_spec[i]);
+            if (strcmp(clients[client_index].name, challenge->private_spec[i]) == 0)
+            {
+                is_in_private_spec = true;
+                break;
+            }
+        }
+    }
+
+    printf("is_private: %d\n", is_private);
+    printf("is_in_private_spec: %d\n", is_in_private_spec);
+
+    if (is_private && !is_in_private_spec)
+    {
+        write_client(clients[client_index].sock, "FAIL:This game is private and not for you\n");
+        return;
+    }
+
 
     // Ajouter le client à la liste des spectateurs
     partie->Spectators[partie->nbSpectators] = clients[client_index];
@@ -681,6 +765,7 @@ void handle_spec(Client *clients, int actual, int client_index, const char *buff
         offset += snprintf(plateau_updated + offset, BUF_SIZE - offset, "%s:%d",
                            partie->awale_challenge.challenged, partie->tour);
     }
+   
     offset += snprintf(plateau_updated + offset, BUF_SIZE - offset, ":%d:%d",
                        partie->jeu.score_joueur1, partie->jeu.score_joueur2);
     

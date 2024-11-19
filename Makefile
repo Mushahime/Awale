@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall -Wimplicit-function-declaration -Wincompatible-pointer-types -Wunused-function -Wextra -Wno-format-truncation -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-variable -g -pthread -lm 
+CFLAGS = -Wall -Wdiscarded-qualifiers -Wimplicit-function-declaration -Wincompatible-pointer-types -Wunused-function -Wextra -Wno-format-truncation -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-variable -g -pthread -lm 
 
 CLIENT_DIR = Client
 SERVER_DIR = Serveur

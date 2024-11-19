@@ -14,7 +14,7 @@ warning : listen socket is like a FIFO for the connection and pseudo is unique
 - free
 - revoir affichage
 - gérer le code
+- score affichage save
 
 Abde :
-5 -> mode observateur
 8 -> spectateur (revoir l'envoie des parties) 
