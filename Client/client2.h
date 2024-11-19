@@ -60,7 +60,7 @@ void clear_screen_custom2();
 void app(const char *address, int port);
 void process_awale_message(SOCKET sock, char *msg_body);
 void process_error_message(SOCKET sock, char *buffer);
-void process_fight_message(SOCKET sock, char *buffer);
+bool process_fight_message(SOCKET sock, char *buffer);
 void process_game_over_message(SOCKET sock, char *buffer);
 void process_private_message(char *buffer);
 void process_system_message(char *buffer);
@@ -68,4 +68,5 @@ void process_challenge_message(char *buffer);
 void prompt_for_move(SOCKET sock, int joueur, const char *nom, int plateau[], int score_joueur1, int score_joueur2);
 void prompt_for_new_move(SOCKET sock, int joueur);
 void handle_spec(SOCKET sock);
+void handle_quit_game(SOCKET sock);
 #endif /* guard */

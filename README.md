@@ -8,13 +8,10 @@ to launch client -> go in repo "Client" and ./client 127.0.0.1 2000
 warning : listen socket is like a FIFO for the connection and pseudo is unique
 
 # TODO
-- gérer les mutex /////
-- variables awale_challenges à enlever -> répétition du code
+- voir appel bloquant (message par exemple)
+- gérer les mutex
+- faire le readme/manuel user
 - Commentaire anglais
-- free
-- revoir affichage
-- gérer le code
-- score affichage save
+- revoir affichage (certains \n sont pas là du genre quand on ctrl c, etc)
 
-Abde :
-8 -> spectateur (revoir l'envoie des parties) 
+- remmettre à 24 le score pour le jeu awale

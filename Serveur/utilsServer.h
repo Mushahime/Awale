@@ -50,30 +50,30 @@ typedef struct {
 typedef struct {
     SOCKET sock;
     char name[BUF_SIZE];
-    char bio[MAX_BIO_LENGTH];
-    int has_bio;
-    int partie_index;
-    int point;
+    char bio[MAX_BIO_LENGTH]; // mutex maybe
+    int has_bio; // mutex maybe
+    int partie_index; // -1 if not in a game (mutex maybe)
+    int point; // mutex maybe
 } Client;
 
 typedef struct {
     AwaleChallenge awale_challenge;
     JeuAwale jeu;
     int tour;
-    Client Spectators[MAX_CLIENTS];
-    int nbSpectators;
+    Client Spectators[MAX_CLIENTS]; // mutex maybe
+    int nbSpectators; // mutex maybe
     char cout[BUF_SAVE_SIZE];
-    int cout_index;
+    int cout_index; 
     bool in_save;
 } PartieAwale;
 
 // Déclaration des variables globales
 extern pthread_mutex_t clients_mutex;
 extern pthread_mutex_t socket_mutex;
-extern AwaleChallenge awale_challenges[MAX_CHALLENGES];
-extern int challenge_count;
-extern PartieAwale awale_parties[MAX_PARTIES];
-extern int partie_count;
+extern AwaleChallenge awale_challenges[MAX_CHALLENGES]; // mutex maybe
+extern int challenge_count; // mutex maybe
+extern PartieAwale awale_parties[MAX_PARTIES]; // mutex maybe
+extern int partie_count; // mutex maybe
 
 // Prototypes de fonctions
 void init(void);

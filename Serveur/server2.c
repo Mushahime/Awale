@@ -167,6 +167,10 @@ void app(int port)
                         {
                             handle_spec(clients, actual, i, buffer + 5);
                         }
+                        else if (strncmp(buffer, "quit_game:", 10) == 0)
+                        {
+                            handle_quit_game(clients, actual, i);
+                        }
                         else
                         {
                             // add [Public] to the message

@@ -153,6 +153,12 @@ void handle_user_input(SOCKET sock)
 
     if (partie_en_cours)
     {
+        if (strncmp(input, "quit", 4) == 0)
+        {
+            handle_quit_game(sock);
+            return;
+        }
+        else
         if (strncmp(input, "mp:", 3) == 0)
         {
             input[strcspn(input, "\n")] = '\0';
@@ -160,7 +166,7 @@ void handle_user_input(SOCKET sock)
         }
         else if (strncmp(input, "\n", 1) != 0) // Ignore les lignes vides
         {
-            printf("During a game, you can only send private messages using 'mp:pseudo:message'\n");
+            printf("During a game, you can only send private messages using 'mp:pseudo:message' or 'quit'\n");
         }
         return;
     }
@@ -211,6 +217,7 @@ void handle_user_input(SOCKET sock)
 
     default:
         printf("\033[1;31mInvalid choice.\033[0m\n");
+        display_menu();
         break;
     }
 }
@@ -447,8 +454,8 @@ void handle_spec(SOCKET sock)
     char buffer[BUF_SIZE];
     char input[BUF_SIZE];
     printf("\n\033[1;36m=== Spec Options ===\033[0m\n");
-    printf("1. Join a game\n");
-    printf("Others. Return to main menu\n");
+    printf("Tap 1. Join a game\n");
+    printf("Or return to main menu (input != 1)\n");
     printf("Choice: ");
 
     if (fgets(input, sizeof(input), stdin) != NULL)
@@ -486,8 +493,6 @@ void handle_play_awale(SOCKET sock)
     char private_game[BUF_SIZE];
     char private_player[BUF_SIZE];
 
-    // Ask if u want to private the game (and ask after pseudo who can spectate the game with coma)
-    // TODO
 
     printf("\033[1;34mEnter the nickname of the player you want to play against: \033[0m");
     if (fgets(buffer, sizeof(buffer), stdin) != NULL)
@@ -576,6 +581,7 @@ void handle_server_message(SOCKET sock, char *buffer)
     }*/
     else if (strstr(buffer, "declined") != NULL)
     {
+        partie_en_cours = false;
         should_display_menu = !partie_en_cours;
     }
     else if (strstr(buffer, "[Challenge") != NULL)
@@ -599,7 +605,18 @@ void handle_server_message(SOCKET sock, char *buffer)
     else if (strstr(buffer, "fight") != NULL)
     {
         printf("\n");
-        process_fight_message(sock, buffer);
+        bool test = process_fight_message(sock, buffer);
+        if (test)
+        {
+            partie_en_cours = true;
+            should_display_menu = !partie_en_cours;
+        }
+        else
+        {
+            partie_en_cours = false;
+            should_display_menu = !partie_en_cours;
+        }
+        
         printf("\n");
     }
     else if (strstr(buffer, "[Spectator") != NULL)
@@ -759,6 +776,7 @@ void process_awale_message(SOCKET sock, char *msg_body)
     {
         printf("\nWaiting for %s's move...\n", nom);
         printf("You can send a private message using 'mp:pseudo:message'\n");
+        printf("Type 'quit' to leave the game\n");
     }
 }
 
@@ -774,81 +792,122 @@ void process_awale_message(SOCKET sock, char *msg_body)
  */
 void prompt_for_move(SOCKET sock, int joueur, const char *nom, int plateau[], int score_joueur1, int score_joueur2)
 {
-    int first, last;
-    if (joueur == 1)
-    {
-        first = 0;
-        last = 5;
-    }
-    else
-    {
-        first = 6;
-        last = 11;
-    }
+    int first = (joueur == 1) ? 0 : 6;
+    int last = (joueur == 1) ? 5 : 11;
 
-    printf("\n");
-    printf("It's your turn, player %d!\n", joueur);
+    printf("\nIt's your turn, player %d!\n", joueur);
     printf("Enter a number between %d and %d to play\n", first, last);
-    printf("Or type 'mp:pseudo:message' to send a private message\n");
+    printf("Type 'mp:pseudo:message' to send a private message\n");
+    printf("Type 'quit' to leave the game\n");
 
+    fd_set rdfs;
+    struct timeval tv;
     char input[BUF_SIZE];
+
     while (1)
     {
-        if (fgets(input, sizeof(input), stdin) != NULL)
+        FD_ZERO(&rdfs);
+        FD_SET(STDIN_FILENO, &rdfs);
+        FD_SET(sock, &rdfs);
+
+        // Reset timeval structure since select modifies it
+        tv.tv_sec = 0;
+        tv.tv_usec = 100000; // 100ms timeout
+
+        int ret = select(sock + 1, &rdfs, NULL, NULL, &tv);
+        if (ret == -1)
         {
-            input[strcspn(input, "\n")] = '\0'; // Remove newline
+            perror("select()");
+            break;
+        }
 
-            // Vérifier si c'est un message privé
-            if (strncmp(input, "mp:", 3) == 0)
+        if (FD_ISSET(STDIN_FILENO, &rdfs))
+        {
+            if (fgets(input, sizeof(input), stdin) != NULL)
             {
-                // Extraire le pseudo et le message après "mp:"
-                char *rest = input + 3;  // Passer "mp:"
-                char *pseudo = strchr(rest, ':');
-                
-                if (pseudo == NULL)
+                input[strcspn(input, "\n")] = '\0';
+
+                if (strcmp(input, "quit") == 0)
                 {
-                    printf("\033[1;31mInvalid format! Use 'mp:pseudo:message'\033[0m\n");
+                    handle_quit_game(sock);
+                    return;
+                }
+
+                if (strncmp(input, "mp:", 3) == 0)
+                {
+                    char *rest = input + 3;
+                    char *pseudo = strchr(rest, ':');
+                    
+                    if (!pseudo)
+                    {
+                        printf("\033[1;31mInvalid format! Use 'mp:pseudo:message'\033[0m\n");
+                        continue;
+                    }
+
+                    int pseudo_len = pseudo - rest;
+                    if (pseudo_len < PSEUDO_MIN_LENGTH || pseudo_len >= PSEUDO_MAX_LENGTH)
+                    {
+                        printf("\033[1;31mInvalid nickname length\033[0m\n");
+                        continue;
+                    }
+
+                    if (strlen(pseudo + 1) == 0)
+                    {
+                        printf("\033[1;31mMessage cannot be empty\033[0m\n");
+                        continue;
+                    }
+
+                    write_server(sock, input);
+                    printf("\033[1;32mMessage sent!\033[0m\n");
+                    printf("Enter a number between %d and %d to play\n", first, last);
                     continue;
                 }
 
-                // Calculer la longueur du pseudo
-                int pseudo_len = pseudo - rest;
-                if (pseudo_len < PSEUDO_MIN_LENGTH || pseudo_len >= PSEUDO_MAX_LENGTH)
+                int move_int = atoi(input);
+                if (move_int >= first && move_int <= last)
                 {
-                    printf("\033[1;31mInvalid nickname length (must be between %d and %d characters)\033[0m\n",
-                           PSEUDO_MIN_LENGTH, PSEUDO_MAX_LENGTH - 1);
-                    continue;
+                    char buffer[BUF_SIZE];
+                    snprintf(buffer, sizeof(buffer), "awale_move:%d", move_int);
+                    write_server(sock, buffer);
+                    return;
                 }
-
-                // Vérifier que le message n'est pas vide
-                if (strlen(pseudo + 1) == 0)
+                else
                 {
-                    printf("\033[1;31mMessage cannot be empty\033[0m\n");
-                    continue;
+                    printf("\033[1;31mInvalid input!\033[0m\n");
                 }
+            }
+        }
 
-                write_server(sock, input);
-                printf("\033[1;32mMessage sent! Now please enter your move (%d-%d):\033[0m\n", first, last);
-                continue;
-            }
-
-            // Sinon, traiter comme un coup de jeu
-            int move_int = atoi(input);
-            if (move_int >= first && move_int <= last)
+        if (FD_ISSET(sock, &rdfs))
+        {
+            char buffer[BUF_SIZE];
+            int n = read_server(sock, buffer);
+            if (n == 0)
             {
-                char buffer[BUF_SIZE];
-                snprintf(buffer, sizeof(buffer), "awale_move:%d", move_int);
-                write_server(sock, buffer);
-                break;
+                printf("\033[1;31mServer disconnected!\033[0m\n");
+                exit(errno);
             }
-            else
-            {
-                printf("\033[1;31mInvalid input! Please enter a number between %d and %d or 'mp:pseudo:message':\033[0m\n", 
-                       first, last);
-            }
+            handle_server_message(sock, buffer);
+            printf("\nEnter a number between %d and %d to play: ", first, last);
+            fflush(stdout);
         }
     }
 }
+
+/**
+ * @brief Handles quitting the Awale game.
+ *
+ * @param sock The socket connected to the server.
+ */
+void handle_quit_game(SOCKET sock) {
+    char buffer[BUF_SIZE];
+    snprintf(buffer, sizeof(buffer), "quit_game:");
+    write_server(sock, buffer);
+    partie_en_cours = false;
+    printf("\033[1;31mYou left the game\033[0m\n");
+    display_menu();
+}
+
 /**
  * @brief Processes error messages from the server.
  *
@@ -871,39 +930,58 @@ void process_error_message(SOCKET sock, char *buffer)
  *
  * @param joueur The player's number.
  */
-void prompt_for_new_move(SOCKET sock, int joueur)
-{
-    char move_input[BUF_SIZE];
-    int first, last;
-    if (joueur == 1)
-    {
-        first = 0;
-        last = 5;
-    }
-    else
-    {
-        first = 6;
-        last = 11;
-    }
+void prompt_for_new_move(SOCKET sock, int joueur) {
+    int first = (joueur == 1) ? 0 : 6;
+    int last = (joueur == 1) ? 5 : 11;
+    
+    printf("Enter a valid move (%d-%d): \n", first, last);
+    printf("Others commands: 'mp:pseudo:message' or 'quit' to leave the game\n");
+    fflush(stdout);
 
-    printf("Please enter a valid move between %d and %d:\n", first, last);
-    while (1)
-    {
-        if (fgets(move_input, sizeof(move_input), stdin) != NULL)
-        {
-            move_input[strcspn(move_input, "\n")] = '\0'; 
-            int move_int = atoi(move_input);
-            if (move_int >= first && move_int <= last)
-            {
-                char buffer[BUF_SIZE];
-                snprintf(buffer, sizeof(buffer), "awale_move:%d", move_int);
-                write_server(sock, buffer);  
-                break;
+    fd_set rdfs;
+    struct timeval tv;
+    char input[BUF_SIZE];
+
+    while (1) {
+        FD_ZERO(&rdfs);
+        FD_SET(STDIN_FILENO, &rdfs);
+        FD_SET(sock, &rdfs);
+
+        tv.tv_sec = 0;
+        tv.tv_usec = 100000;
+
+        int ret = select(sock + 1, &rdfs, NULL, NULL, &tv);
+        if (ret == -1) {
+            perror("select()");
+            return;
+        }
+
+        if (FD_ISSET(STDIN_FILENO, &rdfs)) {
+            if (fgets(input, sizeof(input), stdin) != NULL) {
+                input[strcspn(input, "\n")] = '\0';
+                int move = atoi(input);
+                if (move >= first && move <= last) {
+                    char buffer[BUF_SIZE];
+                    snprintf(buffer, sizeof(buffer), "awale_move:%d", move);
+                    write_server(sock, buffer);
+                    return;
+                }
+                printf("\033[1;31mInvalid move!\033[0m\n");
+                printf("Enter a valid move (%d-%d): ", first, last);
+                fflush(stdout);
             }
-            else
-            {
-                printf("Invalid range! Please enter a number between %d and %d:\n", first, last);
+        }
+
+        if (FD_ISSET(sock, &rdfs)) {
+            char buffer[BUF_SIZE];
+            int n = read_server(sock, buffer);
+            if (n == 0) {
+                printf("\033[1;31mServer disconnected!\033[0m\n");
+                exit(errno);
             }
+            handle_server_message(sock, buffer);
+            printf("\nEnter a valid move (%d-%d): ", first, last);
+            fflush(stdout);
         }
     }
 }
@@ -914,7 +992,7 @@ void prompt_for_new_move(SOCKET sock, int joueur)
  * @param sock The socket connected to the server.
  * @param buffer The buffer containing the fight message.
  */
-void process_fight_message(SOCKET sock, char *buffer)
+bool process_fight_message(SOCKET sock, char *buffer)
 {
     printf("\033[1;31m%s\033[0m\n", buffer); // Red for fight messages
     printf("\033[1;31mDo you accept the challenge? (yes/no)\033[0m\n");
@@ -938,6 +1016,15 @@ void process_fight_message(SOCKET sock, char *buffer)
                 printf("\033[1;31mPlease enter 'yes' or 'no'\033[0m\n");
             }
         }
+    }
+
+    if (strcmp(response, "yes") == 0)
+    {
+        return true;
+    }
+    else
+    {
+        return false;
     }
 }
 
@@ -1004,15 +1091,15 @@ void process_challenge_message(char *buffer)
 void display_menu()
 {
     printf("\n\033[1;36m=== Chat Menu ===\033[0m\n");
-    printf("1. Send message to all\n");
-    printf("2. Send private message\n");
-    printf("3. List connected users (+ rank)\n");
-    printf("4. Bio options\n");
-    printf("5. Play awale vs someone\n");
-    printf("6. ALl games in progression\n");
-    printf("7. See the save games\n");
-    printf("8. Spectate a game\n");
-    printf("9. Clear screen\n");
+    printf("1.  Send message to all\n");
+    printf("2.  Send private message\n");
+    printf("3.  List connected users (+ rank)\n");
+    printf("4.  Bio options\n");
+    printf("5.  Play awale vs someone\n");
+    printf("6.  ALl games in progression\n");
+    printf("7.  See the save games\n");
+    printf("8.  Spectate a game\n");
+    printf("9.  Clear screen\n");
     printf("10. Quit\n");
     printf("\n");
     printf("Choice: ");

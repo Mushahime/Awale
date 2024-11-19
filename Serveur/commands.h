@@ -42,17 +42,13 @@ void handle_bio_command(Client *clients, int actual, int client_index, const cha
 void handle_private_message(Client *clients, int actual, int sender_index, const char *buffer);
 void handle_save(Client *clients, int actual, int client_index, const char *buffer);
 void handle_spec(Client *clients, int actual, int client_index, const char *buffer);
+void handle_quit_game(Client *clients, int actual, int client_index);
 
 //void stream_move(SOCKET sock, const char *buffer, PartieAwale *partieAwale);
 //void addSpectator(PartieAwale *partieAwale, Client newSpectator);
 //void initSpectators(Client *clients, int actual, PartieAwale *partieAwale);
 //void allowAll(Client *clients, int actual, PartieAwale *partieAwale);
 //void clearSpectators(PartieAwale *PartieAwale);
-/*
-1-watch an awale game as an observator // ask the server to swend the board and who is playing
-2-make game private // modify the game struct and add to it a list of clients that have permission
-3-
-3-sending messages during the game // add a menu inside all elements of the menu
-*/
+
 
 #endif
