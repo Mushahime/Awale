@@ -474,6 +474,7 @@ void handle_quit()
  */
 void handle_server_message(SOCKET sock, char *buffer)
 {
+    sleep(1);
     // Clear the current line and move cursor up
     printf("\r\033[K\033[A\033[K");
 
@@ -698,8 +699,34 @@ void prompt_for_move(SOCKET sock, int joueur, const char *nom, int plateau[], in
             // Vérifier si c'est un message privé
             if (strncmp(input, "mp:", 3) == 0)
             {
+                // Extraire le pseudo et le message après "mp:"
+                char *rest = input + 3;  // Passer "mp:"
+                char *pseudo = strchr(rest, ':');
+                
+                if (pseudo == NULL)
+                {
+                    printf("\033[1;31mInvalid format! Use 'mp:pseudo:message'\033[0m\n");
+                    continue;
+                }
+
+                // Calculer la longueur du pseudo
+                int pseudo_len = pseudo - rest;
+                if (pseudo_len < PSEUDO_MIN_LENGTH || pseudo_len >= PSEUDO_MAX_LENGTH)
+                {
+                    printf("\033[1;31mInvalid nickname length (must be between %d and %d characters)\033[0m\n",
+                           PSEUDO_MIN_LENGTH, PSEUDO_MAX_LENGTH - 1);
+                    continue;
+                }
+
+                // Vérifier que le message n'est pas vide
+                if (strlen(pseudo + 1) == 0)
+                {
+                    printf("\033[1;31mMessage cannot be empty\033[0m\n");
+                    continue;
+                }
+
                 write_server(sock, input);
-                printf("Message sent! Now please enter your move (%d-%d):\n", first, last);
+                printf("\033[1;32mMessage sent! Now please enter your move (%d-%d):\033[0m\n", first, last);
                 continue;
             }
 
@@ -714,12 +741,12 @@ void prompt_for_move(SOCKET sock, int joueur, const char *nom, int plateau[], in
             }
             else
             {
-                printf("\033[1;31mInvalid input! Please enter a number between %d and %d or 'mp:pseudo:message':\033[0m\n", first, last);
+                printf("\033[1;31mInvalid input! Please enter a number between %d and %d or 'mp:pseudo:message':\033[0m\n", 
+                       first, last);
             }
         }
     }
 }
-
 /**
  * @brief Processes error messages from the server.
  *

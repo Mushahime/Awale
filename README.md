@@ -12,6 +12,7 @@ warning : listen socket is like a FIFO for the connection and pseudo is unique
 - variables awale_challenges à enlever -> répétition du code
 - Commentaire anglais
 - free
+- revoir affichage
 - gérer le code
 
 Abde :

@@ -190,6 +190,7 @@ void handle_awale_response(Client *clients, int actual, int client_index, const 
         nouvelle_partie.spectators = malloc(2 * sizeof(Client));*/
         nouvelle_partie.cout[0] = '\0';
         nouvelle_partie.cout_index = 0;
+        nouvelle_partie.in_save = false;
 
         // Mettre l'id dans les 2 clients
         for (int i = 0; i < actual; i++)
@@ -442,6 +443,9 @@ void handle_awale_move(Client *clients, int actual, int client_index, const char
                 challenged->point += facteur*(1-p_vict_challenged);
             }
 
+            // In_save
+            partie->in_save = true;
+
             return;
         }
 
@@ -557,12 +561,17 @@ void handle_private_message(Client *clients, int actual, int sender_index, const
     char message[BUF_SIZE];
     const char *msg_start = strchr(buffer + 3, ':');
 
+    printf("buffer: %s\n", buffer);
+    printf("msg_start: %s\n", msg_start);
+
     if (msg_start == NULL)
         return;
 
     int pseudo_len = msg_start - (buffer + 3);
     strncpy(target_pseudo, buffer + 3, pseudo_len);
     target_pseudo[pseudo_len] = '\0';
+
+    printf("target_pseudo: %s\n", target_pseudo);
 
     strncpy(message, msg_start + 1, BUF_SIZE - 1);
 
@@ -571,11 +580,11 @@ void handle_private_message(Client *clients, int actual, int sender_index, const
         if (strcmp(clients[i].name, target_pseudo) == 0)
         {
             char formatted_msg[BUF_SIZE];
-            snprintf(formatted_msg, BUF_SIZE, "[Private from %s]: %s\n",
+            snprintf(formatted_msg, BUF_SIZE, "[Private from %s]: %s\n\n",
                      clients[sender_index].name, message);
             write_client(clients[i].sock, formatted_msg);
 
-            snprintf(formatted_msg, BUF_SIZE, "[Private to %s]: %s\n",
+            snprintf(formatted_msg, BUF_SIZE, "[Private to %s]: %s\n\n",
                      target_pseudo, message);
             write_client(clients[sender_index].sock, formatted_msg);
             return;
@@ -585,7 +594,7 @@ void handle_private_message(Client *clients, int actual, int sender_index, const
     char error_msg[BUF_SIZE];
     snprintf(error_msg, BUF_SIZE, "User %s not found.\n", target_pseudo);
     write_client(clients[sender_index].sock, error_msg);
-    free(msg_start);
+    //free(msg_start);
 }
 
 void list_connected_clients(Client *clients, int actual, int requester_index)
