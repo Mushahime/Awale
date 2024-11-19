@@ -192,6 +192,10 @@ void handle_awale_response(Client *clients, int actual, int client_index, const 
         nouvelle_partie.cout_index = 0;
         nouvelle_partie.in_save = false;
 
+        nouvelle_partie.nbSpectators = 0;
+
+        nouvelle_partie.prive = false;
+
         // Mettre l'id dans les 2 clients
         for (int i = 0; i < actual; i++)
         {
@@ -414,6 +418,14 @@ void handle_awale_move(Client *clients, int actual, int client_index, const char
                 }
             }
 
+            // ENvoyer le message de fin de partie aux spectateurs avec [Spectator] devant
+            char end_msg_spectator[BUF_SIZE];
+            snprintf(end_msg_spectator, BUF_SIZE, "[Spectator] %s\n", end_msg);
+            for (int i = 0; i < partie->nbSpectators; i++)
+            {
+                write_client(partie->Spectators[i].sock, end_msg_spectator);
+            }
+
             Client * challenger = findClientByPseudo(clients, actual, partie->awale_challenge.challenger);
             Client * challenged = findClientByPseudo(clients, actual, partie->awale_challenge.challenged);
 
@@ -479,6 +491,11 @@ void handle_awale_move(Client *clients, int actual, int client_index, const char
                 {
                     write_client(clients[i].sock, plateau_updated);
                 }
+            }
+
+            for (int i = 0; i < partie->nbSpectators; i++)
+            {
+                write_client(partie->Spectators[i].sock, plateau_updated);
             }
         }
     }
@@ -615,6 +632,61 @@ void list_connected_clients(Client *clients, int actual, int requester_index)
     write_client(clients[requester_index].sock, list);
 }
 
+void handle_spec(Client *clients, int actual, int client_index, const char *buffer)
+{
+    printf("buffer: %s\n", buffer); //pseudo
+
+    // Trouver la partie
+    Client * player = findClientByPseudo(clients, actual, buffer);
+    if (player == NULL)
+    {
+        write_client(clients[client_index].sock, "FAIL:This player doesnt exist\n");
+        return;
+    }
+
+    PartieAwale * partie = &awale_parties[player->partie_index];
+    if (partie == NULL || partie->nbSpectators >= MAX_CLIENTS || partie->in_save)
+    {
+        write_client(clients[client_index].sock, "FAIL:Cannot spectate this game (doesnt exist, not ready or forbidden)\n");
+        return;
+    }
+
+    // Ajouter le client à la liste des spectateurs
+    partie->Spectators[partie->nbSpectators] = clients[client_index];
+    partie->nbSpectators++;
+    
+    // Le client est in_game
+    clients[client_index].partie_index = player->partie_index;
+    
+    write_client(clients[client_index].sock, "You are now spectating this game\n");
+    sleep(1);
+    
+
+    // Envoyer le plateau actuel
+    // TODO: Envoyer le plateau actuel
+    char plateau_updated[BUF_SIZE] = {0};
+    int offset = 0;
+    offset += snprintf(plateau_updated, BUF_SIZE, "AWALE:");
+    for (int i = 0; i < TAILLE_PLATEAU; i++)
+    {
+        offset += snprintf(plateau_updated + offset, BUF_SIZE - offset, "%d:", partie->jeu.plateau[i]);
+    }
+    if (partie->tour == 1)
+    {
+        offset += snprintf(plateau_updated + offset, BUF_SIZE - offset, "%s:%d",
+                           partie->awale_challenge.challenger, partie->tour);
+    }
+    else
+    {
+        offset += snprintf(plateau_updated + offset, BUF_SIZE - offset, "%s:%d",
+                           partie->awale_challenge.challenged, partie->tour);
+    }
+    offset += snprintf(plateau_updated + offset, BUF_SIZE - offset, ":%d:%d",
+                       partie->jeu.score_joueur1, partie->jeu.score_joueur2);
+    
+    write_client(clients[client_index].sock, plateau_updated);
+}
+
 void handle_awale_list(Client *clients, int actual, int client_index)
 {
     //clean_invalid_parties(clients, actual);
@@ -639,7 +711,7 @@ void handle_awale_list(Client *clients, int actual, int client_index)
     write_client(clients[client_index].sock, list);
 }
 
-void addSpectator(PartieAwale *partieAwale, Client newSpectator)
+/*void addSpectator(PartieAwale *partieAwale, Client newSpectator)
 {
     int current_size = partieAwale->nbSpectators + 1;
     int *temp = realloc(partieAwale->spectators, current_size * sizeof(int)); // Reallocate memory
@@ -652,9 +724,9 @@ void addSpectator(PartieAwale *partieAwale, Client newSpectator)
     partieAwale->spectators = temp;
     partieAwale->spectators[current_size - 1] = newSpectator;
     partieAwale->nbSpectators += 1;
-}
+}*/
 
-void initSpectators(Client *clients, int actual, PartieAwale *partieAwale) // remember to free this memory
+/*void initSpectators(Client *clients, int actual, PartieAwale *partieAwale) // remember to free this memory
 {
     int initialSize = partieAwale->nbSpectators;
     partieAwale = malloc(initialSize * sizeof(Client));
@@ -668,10 +740,10 @@ void initSpectators(Client *clients, int actual, PartieAwale *partieAwale) // re
     {
         partieAwale->spectators[1] = *player2;
     }
-}
+}*/
 
 
-void allowAll(Client *clients, int actual, PartieAwale *partieAwale)
+/*void allowAll(Client *clients, int actual, PartieAwale *partieAwale)
 {
     for (int i = 0; i < actual; i++)
     {
@@ -703,4 +775,4 @@ void stream_move(SOCKET sock, const char *buffer, PartieAwale *partieAwale)
         // Send the message to the spectators
         write_client(partieAwale->spectators[i].sock, message);
     }
-}
+}*/

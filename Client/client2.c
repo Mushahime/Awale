@@ -22,6 +22,7 @@ typedef enum
     PLAY_AWALE,
     LIST_GAMES_IN_PROGRESS,
     SEE_SAVE,
+    SPEC,
     CLEAR_SCREEN,
     QUIT
 } MenuChoice;
@@ -194,6 +195,10 @@ void handle_user_input(SOCKET sock)
 
     case SEE_SAVE:
         handle_save();
+        break;
+
+    case SPEC:
+        handle_spec(sock);
         break;
 
     case CLEAR_SCREEN:
@@ -426,6 +431,42 @@ void handle_bio_options(SOCKET sock)
 }
 
 /**
+ * @brief Handles the spec menu.
+ *
+ * @param sock The socket connected to the server.
+ */
+void handle_spec(SOCKET sock)
+{
+    char buffer[BUF_SIZE];
+    char input[BUF_SIZE];
+    printf("\n\033[1;36m=== Spec Options ===\033[0m\n");
+    printf("1. Join a game\n");
+    printf("Others. Return to main menu\n");
+    printf("Choice: ");
+
+    if (fgets(input, sizeof(input), stdin) != NULL)
+    {
+        int bio_choice = atoi(input);
+        if (bio_choice == 1)
+        {
+            printf("\033[1;34mEnter the nickname of the player you want to spectate: \033[0m");
+            if (fgets(buffer, sizeof(buffer), stdin) != NULL)
+            {
+                buffer[strcspn(buffer, "\n")] = '\0'; // Remove newline
+                snprintf(input, sizeof(input), "spec:%s", buffer);
+                write_server(sock, input);
+            }
+        }
+        else
+        {
+            printf("\033[1;31mInvalid bio option selected.\033[0m\n");
+            printf("\033[1;33mReturning to main menu...\033[0m\n");
+            display_menu(); 
+        }
+    }
+}
+
+/**
  * @brief Handles initiating a game of Awale.
  *
  * @param sock The socket connected to the server.
@@ -434,6 +475,9 @@ void handle_play_awale(SOCKET sock)
 {
     char buffer[BUF_SIZE];
     char input[BUF_SIZE];
+
+    // Ask if u want to private the game (and ask after pseudo who can spectate the game with coma)
+    // TODO
 
     printf("\033[1;34mEnter the nickname of the player you want to play against: \033[0m");
     if (fgets(buffer, sizeof(buffer), stdin) != NULL)
@@ -508,9 +552,21 @@ void handle_server_message(SOCKET sock, char *buffer)
     {
         process_error_message(sock, buffer);
     }
+    else if (strncmp(buffer, "FAIL:", 5) == 0)
+    {
+        printf("\033[1;32m%s\033[0m\n", buffer + 5);
+        partie_en_cours = false;
+        should_display_menu = true;
+    }
     else if (strstr(buffer, "fight") != NULL)
     {
         process_fight_message(sock, buffer);
+    }
+    else if (strstr(buffer, "[Spectator") != NULL)
+    {
+        process_game_over_message(sock, buffer);
+        partie_en_cours = false;
+        should_display_menu = true;
     }
     else if (strstr(buffer, "over") != NULL)
     {
@@ -522,6 +578,12 @@ void handle_server_message(SOCKET sock, char *buffer)
         {
             saver(sock, buffer);
         }
+    }
+    else if (strstr(buffer, "spectating")!=NULL)
+    {
+        partie_en_cours = true;
+        printf("\033[1;32m%s\033[0m\n", buffer);
+        should_display_menu = !partie_en_cours;
     }
     else
     {
@@ -907,8 +969,9 @@ void display_menu()
     printf("5. Play awale vs someone\n");
     printf("6. ALl games in progression\n");
     printf("7. See the save games\n");
-    printf("8. Clear screen\n");
-    printf("9. Quit\n");
+    printf("8. Spectate a game\n");
+    printf("9. Clear screen\n");
+    printf("10. Quit\n");
     printf("\n");
     printf("Choice: ");
     fflush(stdout);
