@@ -163,6 +163,10 @@ static void app(int port)
                         {
                             handle_save(clients, actual, i, buffer + 5);
                         }
+                        else if (strncmp(buffer, "spec:", 5) == 0)
+                        {
+                            handle_spec(clients, actual, i, buffer + 5);
+                        }
                         else
                         {
                             send_message_to_all_clients(clients, client, actual, buffer, 0);

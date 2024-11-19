@@ -95,11 +95,6 @@ void remove_partie(int index, Client *clients)
 {
     if (index >= 0 && index < partie_count)
     {
-        if (awale_parties[index].spectators != NULL)
-        {
-            free(awale_parties[index].spectators);
-            awale_parties[index].spectators = NULL;
-        }
 
         memmove(&awale_parties[index], &awale_parties[index + 1],
                 (partie_count - index - 1) * sizeof(PartieAwale));
@@ -149,29 +144,50 @@ void remove_client(Client *clients, int to_remove, int *actual)
         remove_challenge(challenge_index);
     }
 
+
     // Ensuite gérer la partie en cours (code existant)
     if (clients[to_remove].partie_index != -1) {
-        int partie_index = clients[to_remove].partie_index;
-        PartieAwale *partie = &awale_parties[partie_index];
-        char msg[BUF_SIZE];
-        char *disconnected_player = clients[to_remove].name;
-        
-        for (int i = 0; i < *actual; i++) {
-            if (i != to_remove && clients[i].partie_index == partie_index) {
-                if (strcmp(clients[i].name, partie->awale_challenge.challenger) == 0 ||
-                    strcmp(clients[i].name, partie->awale_challenge.challenged) == 0) {
-                    snprintf(msg, BUF_SIZE, "\033[1;31mGame over! %s has left the game\033[0m\n",
-                            disconnected_player);
-                    write_client(clients[i].sock, msg);
-                    clients[i].partie_index = -1;
+        if (strcmp(awale_parties[clients[to_remove].partie_index].awale_challenge.challenger, clients[to_remove].name) == 0 ||
+            strcmp(awale_parties[clients[to_remove].partie_index].awale_challenge.challenged, clients[to_remove].name) == 0) {
+            int partie_index = clients[to_remove].partie_index;
+            PartieAwale *partie = &awale_parties[partie_index];
+            char msg[BUF_SIZE];
+            char *disconnected_player = clients[to_remove].name;
+            
+            for (int i = 0; i < *actual; i++) {
+                if (i != to_remove && clients[i].partie_index == partie_index) {
+                    if (strcmp(clients[i].name, partie->awale_challenge.challenger) == 0 ||
+                        strcmp(clients[i].name, partie->awale_challenge.challenged) == 0) {
+                        snprintf(msg, BUF_SIZE, "\033[1;31mGame over! %s has left the game\033[0m\n",
+                                disconnected_player);
+                        write_client(clients[i].sock, msg);
+                        clients[i].partie_index = -1;
+                    }
                 }
             }
+            remove_partie(partie_index, clients);
         }
-        remove_partie(partie_index, clients);
+        else {
+            // Si le joueur n'est pas un des deux joueurs de la partie, il est un spectateur
+            PartieAwale *partie = &awale_parties[clients[to_remove].partie_index];
+            remove_spec(partie->Spectators, to_remove, partie->nbSpectators, partie);
+        }
     }
 
     memmove(clients + to_remove, clients + to_remove + 1, (*actual - to_remove - 1) * sizeof(Client));
     (*actual)--;
+}
+
+void remove_spec(Client *clients, int to_remove, int actual, PartieAwale *partie)
+{
+    if (to_remove >= 0 && to_remove < actual)
+    {
+        if (partie->nbSpectators > 0)
+        {
+            memmove(partie->Spectators + to_remove, partie->Spectators + to_remove + 1, (partie->nbSpectators - to_remove - 1) * sizeof(Client));
+            partie->nbSpectators--;
+        }
+    }
 }
 
 void send_message_to_all_clients(Client *clients, Client sender, int actual, const char *buffer, char from_server)

@@ -58,7 +58,8 @@ typedef struct {
     JeuAwale jeu;
     int tour;
     bool prive;
-    Client *spectators;
+    char private_spec[PSEUDO_MAX_LENGTH * MAX_CLIENTS];
+    Client Spectators[MAX_CLIENTS];
     int nbSpectators;
     char cout[BUF_SAVE_SIZE];
     int cout_index;
@@ -85,5 +86,6 @@ void remove_client(Client *clients, int to_remove, int *actual);
 int read_client(SOCKET sock, char *buffer);
 void write_client(SOCKET sock, const char *buffer);
 void send_message_to_all_clients(Client *clients, Client sender, int actual, const char *buffer, char from_server);
+void remove_spec(Client *clients, int to_remove, int actual, PartieAwale *partie);
 
 #endif /* UTILS_H */

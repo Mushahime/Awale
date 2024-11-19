@@ -66,4 +66,5 @@ void process_system_message(char *buffer);
 void process_challenge_message(char *buffer);
 void prompt_for_move(SOCKET sock, int joueur, const char *nom, int plateau[], int score_joueur1, int score_joueur2);
 void prompt_for_new_move(SOCKET sock, int joueur);
+void handle_spec(SOCKET sock);
 #endif /* guard */
