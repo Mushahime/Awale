@@ -9,7 +9,7 @@
 #include <sys/select.h>
 #include "utilsServer.h"
 
-static void app(int port)
+void app(int port)
 {
     SOCKET sock = init_connection(port);
     char buffer[BUF_SIZE];
@@ -99,7 +99,7 @@ static void app(int port)
             c.has_bio = 0;
             clients[actual] = c;
             clients[actual].partie_index = -1;
-            clients[actual].point = 100;
+            clients[actual].point = 500;
             actual++;
 
             write_client(csock, "connected");
@@ -169,7 +169,10 @@ static void app(int port)
                         }
                         else
                         {
-                            send_message_to_all_clients(clients, client, actual, buffer, 0);
+                            // add [Public] to the message
+                            char public_msg[BUF_SIZE];
+                            snprintf(public_msg, BUF_SIZE, "[Public] %s", buffer);
+                            send_message_to_all_clients(clients, client, actual, public_msg, 0);
                         }
                     }
                     break;

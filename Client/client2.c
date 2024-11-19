@@ -276,6 +276,7 @@ void handle_save()
 {
     if (save_count == 0)
     {
+        printf("\n");
         printf("\033[1;31mNo save available.\033[0m\n");
         display_menu();
         return;
@@ -318,8 +319,9 @@ void handle_save()
         }
         else
         {
+            printf("\n");
             printf("\033[1;31mInvalid save choice.\033[0m\n");
-            printf("\033[1;33mReturning to main menu...\033[0m\n");
+            printf("\033[1;31mReturning to main menu...\033[0m\n");
             display_menu();
             return;
         }
@@ -364,21 +366,25 @@ void demo_partie(const char *buffer) {
     while (coup != NULL) {
         int coup_int = atoi(coup);
         printf("\n");
-        printf("Coup joué: %d\n", coup_int);
+        printf("--------------------------------\n");
+        printf("Coup joue: %d\n", coup_int);
         jouer_coup(&jeu, tour_int, coup_int);
         afficher_plateau(&jeu);
         sleep(2);
         coup = strtok_r(NULL, ":", &saveptr);
         tour_int = (tour_int == 1) ? 2 : 1;
     }
+    printf("--------------------------------\n");
     printf("\n");
     printf("Fin de la partie\n");
-    printf("Score final: J1: %d, J2: %d\n", jeu.score_joueur1, jeu.score_joueur2);
+    int score_J2 = jeu.plateau[6] + jeu.plateau[7] + jeu.plateau[8] + jeu.plateau[9] + jeu.plateau[10] + jeu.plateau[11] + jeu.score_joueur1;
+    int score_J1 = jeu.plateau[0] + jeu.plateau[1] + jeu.plateau[2] + jeu.plateau[3] + jeu.plateau[4] + jeu.plateau[5] + jeu.score_joueur2;
+    printf("Score final: J1: %d, J2: %d\n", score_J1, score_J2);
     
-    if (jeu.score_joueur1 == jeu.score_joueur2) {
+    if (score_J1 == score_J2) {
         printf("Match nul!\n");
     } else {
-        printf("Le gagnant est %s!\n", (jeu.score_joueur1 > jeu.score_joueur2) ? challenger : challenged);
+        printf("Le gagnant est %s!\n", (score_J1 > score_J2) ? challenger : challenged);
     }
     
     free(temp_buffer);
@@ -421,9 +427,10 @@ void handle_bio_options(SOCKET sock)
             }
         }
         else
-        {
+        {   
+            printf("\n");
             printf("\033[1;31mInvalid bio option selected.\033[0m\n");
-            printf("\033[1;33mReturning to main menu...\033[0m\n");
+            printf("\033[1;31mReturning to main menu...\033[0m\n");
             display_menu(); 
             return ;
         }
@@ -459,8 +466,9 @@ void handle_spec(SOCKET sock)
         }
         else
         {
+            printf("\n");
             printf("\033[1;31mInvalid bio option selected.\033[0m\n");
-            printf("\033[1;33mReturning to main menu...\033[0m\n");
+            printf("\033[1;31mReturning to main menu...\033[0m\n");
             display_menu(); 
         }
     }
@@ -475,6 +483,8 @@ void handle_play_awale(SOCKET sock)
 {
     char buffer[BUF_SIZE];
     char input[BUF_SIZE];
+    char private_game[BUF_SIZE];
+    char private_player[BUF_SIZE];
 
     // Ask if u want to private the game (and ask after pseudo who can spectate the game with coma)
     // TODO
@@ -483,9 +493,32 @@ void handle_play_awale(SOCKET sock)
     if (fgets(buffer, sizeof(buffer), stdin) != NULL)
     {
         buffer[strcspn(buffer, "\n")] = '\0'; // Remove newline
-        snprintf(input, sizeof(input), "awale:%s", buffer);
-        write_server(sock, input);
-        printf("Waiting for response...\n");
+
+        // Send to the server if u want to private the game
+        printf("\033[1;34mDo you want to private the game? (yes/no)\033[0m\n");
+
+        if (fgets(private_game, sizeof(private_game), stdin) != NULL)
+        {
+            //forme awale:pseudo:yes/no
+            private_game[strcspn(private_game, "\n")] = '\0'; // Remove newline
+
+            //List of players who can spectate the game (coma separated)
+            if (strcmp(private_game, "yes") == 0)
+            {
+                printf("\033[1;34mEnter the list of players who can spectate the game (: separated)\033[0m\n");
+                if (fgets(private_player, sizeof(private_player), stdin) != NULL)
+                {
+                    private_player[strcspn(private_player, "\n")] = '\0'; // Remove newline
+                    snprintf(input, sizeof(input), "awale:%s:%s:%s:", buffer, private_game, private_player);
+                }
+            }
+            else
+            {
+                snprintf(input, sizeof(input), "awale:%s:%s", buffer, private_game);
+            }
+            write_server(sock, input);
+            printf("Waiting for the other player to accept...\n");
+        }
     }
 }
 
@@ -518,17 +551,22 @@ void handle_quit()
  */
 void handle_server_message(SOCKET sock, char *buffer)
 {
-    sleep(1);
     // Clear the current line and move cursor up
     printf("\r\033[K\033[A\033[K");
 
-    printf("le buffer est %s\n", buffer);
+    //printf("le buffer est %s\n", buffer);
 
     bool should_display_menu = false;
 
     if (strstr(buffer, "[Private") != NULL)
     {
         process_private_message(buffer);
+        should_display_menu = !partie_en_cours;
+    }
+    else if (strstr(buffer, "[Public") != NULL)
+    {
+        printf("\n");
+        printf("\033[1;32m%s\033[0m\n", buffer);
         should_display_menu = !partie_en_cours;
     }
     /*else if (strstr(buffer, "disconnected") != NULL || strstr(buffer, "joined") != NULL)
@@ -560,7 +598,9 @@ void handle_server_message(SOCKET sock, char *buffer)
     }
     else if (strstr(buffer, "fight") != NULL)
     {
+        printf("\n");
         process_fight_message(sock, buffer);
+        printf("\n");
     }
     else if (strstr(buffer, "[Spectator") != NULL)
     {
@@ -587,7 +627,8 @@ void handle_server_message(SOCKET sock, char *buffer)
     }
     else
     {
-        printf("\033[1;32m%s\033[0m\n", buffer);
+        printf("\n");
+        printf("\033[1;32m%s\033[0m", buffer);
         should_display_menu = !partie_en_cours;
     }
 
@@ -615,7 +656,6 @@ void saver(SOCKET sock, char * buffer){
         save_game[strcspn(save_game, "\n")] = '\0'; // Remove newline
         char save_game_message[BUF_SIZE];
         snprintf(save_game_message, sizeof(save_game_message), "save:%s", save_game);
-        printf("save_game_message: %s\n", save_game_message);
         write_server(sock, save_game_message);
 
         // wait for the response
@@ -644,7 +684,7 @@ void saver(SOCKET sock, char * buffer){
         strncpy(save[save_count], total, BUF_SAVE_SIZE);
         save[save_count][strlen(total)] = '\0';
 
-        printf("save game: %s\n", save[save_count]);
+        printf("save ok\n");
 
         save_index = (save_index+1) % MAX_PARTIES;
         if (save_count < MAX_PARTIES)
@@ -922,7 +962,9 @@ void process_game_over_message(SOCKET sock, char *buffer)
  */
 void process_private_message(char *buffer)
 {
-    printf("\033[1;35m%s\033[0m\n", buffer); // Magenta for private messages
+    fflush(stdout);
+    printf("\n");
+    printf("\033[1;35m%s\033[0m", buffer); // Magenta for private messages
 }
 
 /**
@@ -948,9 +990,9 @@ void process_challenge_message(char *buffer)
         partie_en_cours = true;  // Set game state before announcing wait
         printf("\033[1;33mStarting game in 5 seconds...\033[0m\n");
 #ifdef WIN32
-        Sleep(5000); // Windows Sleep in milliseconds
+        Sleep(3000); // Windows Sleep in milliseconds
 #else
-        sleep(5); // Unix sleep in seconds
+        sleep(3); // Unix sleep in seconds
 #endif
         // Ne pas afficher le menu ici car une partie commence
     }
@@ -987,6 +1029,16 @@ void clear_screen_custom()
 #else
     system("clear");
 #endif
+display_menu();
+}
+
+void clear_screen_custom2()
+{
+#ifdef _WIN32
+    system("cls");
+#else
+    system("clear");
+#endif
 }
 
 /**
@@ -1007,7 +1059,7 @@ void app(const char *address, int port)
         exit(EXIT_FAILURE);
     }
 
-    clear_screen_custom();
+    clear_screen_custom2();
     display_menu();  // Premier affichage du menu
 
     while (1)

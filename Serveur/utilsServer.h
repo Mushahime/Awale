@@ -42,6 +42,9 @@ typedef struct in_addr IN_ADDR;
 typedef struct {
     char challenger[PSEUDO_MAX_LENGTH];
     char challenged[PSEUDO_MAX_LENGTH];
+    bool prive;
+    char private_spec[MAX_CLIENTS][PSEUDO_MAX_LENGTH];
+    int private_spec_count;
 } AwaleChallenge;
 
 typedef struct {
@@ -57,8 +60,6 @@ typedef struct {
     AwaleChallenge awale_challenge;
     JeuAwale jeu;
     int tour;
-    bool prive;
-    char private_spec[PSEUDO_MAX_LENGTH * MAX_CLIENTS];
     Client Spectators[MAX_CLIENTS];
     int nbSpectators;
     char cout[BUF_SAVE_SIZE];
