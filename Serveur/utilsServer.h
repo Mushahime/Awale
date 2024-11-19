@@ -62,6 +62,7 @@ typedef struct {
     int nbSpectators;
     char cout[BUF_SAVE_SIZE];
     int cout_index;
+    bool in_save;
 } PartieAwale;
 
 // Déclaration des variables globales

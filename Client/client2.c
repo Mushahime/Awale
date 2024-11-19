@@ -152,6 +152,15 @@ void handle_user_input(SOCKET sock)
 
     if (partie_en_cours)
     {
+        if (strncmp(input, "mp:", 3) == 0)
+        {
+            input[strcspn(input, "\n")] = '\0';
+            write_server(sock, input);
+        }
+        else if (strncmp(input, "\n", 1) != 0) // Ignore les lignes vides
+        {
+            printf("During a game, you can only send private messages using 'mp:pseudo:message'\n");
+        }
         return;
     }
     choice = atoi(input);
@@ -465,6 +474,7 @@ void handle_quit()
  */
 void handle_server_message(SOCKET sock, char *buffer)
 {
+    sleep(1);
     // Clear the current line and move cursor up
     printf("\r\033[K\033[A\033[K");
 
@@ -643,6 +653,11 @@ void process_awale_message(SOCKET sock, char *msg_body)
     {
         prompt_for_move(sock, joueur, nom, plateau, score_joueur1, score_joueur2);
     }
+    else
+    {
+        printf("\nWaiting for %s's move...\n", nom);
+        printf("You can send a private message using 'mp:pseudo:message'\n");
+    }
 }
 
 /**
@@ -670,15 +685,53 @@ void prompt_for_move(SOCKET sock, int joueur, const char *nom, int plateau[], in
     }
 
     printf("\n");
-    printf("It's your turn, player %d! Please enter a number between %d and %d:\n", joueur, first, last);
+    printf("It's your turn, player %d!\n", joueur);
+    printf("Enter a number between %d and %d to play\n", first, last);
+    printf("Or type 'mp:pseudo:message' to send a private message\n");
 
-    char move_input[BUF_SIZE];
+    char input[BUF_SIZE];
     while (1)
     {
-        if (fgets(move_input, sizeof(move_input), stdin) != NULL)
+        if (fgets(input, sizeof(input), stdin) != NULL)
         {
-            move_input[strcspn(move_input, "\n")] = '\0'; // Remove newline
-            int move_int = atoi(move_input);
+            input[strcspn(input, "\n")] = '\0'; // Remove newline
+
+            // Vérifier si c'est un message privé
+            if (strncmp(input, "mp:", 3) == 0)
+            {
+                // Extraire le pseudo et le message après "mp:"
+                char *rest = input + 3;  // Passer "mp:"
+                char *pseudo = strchr(rest, ':');
+                
+                if (pseudo == NULL)
+                {
+                    printf("\033[1;31mInvalid format! Use 'mp:pseudo:message'\033[0m\n");
+                    continue;
+                }
+
+                // Calculer la longueur du pseudo
+                int pseudo_len = pseudo - rest;
+                if (pseudo_len < PSEUDO_MIN_LENGTH || pseudo_len >= PSEUDO_MAX_LENGTH)
+                {
+                    printf("\033[1;31mInvalid nickname length (must be between %d and %d characters)\033[0m\n",
+                           PSEUDO_MIN_LENGTH, PSEUDO_MAX_LENGTH - 1);
+                    continue;
+                }
+
+                // Vérifier que le message n'est pas vide
+                if (strlen(pseudo + 1) == 0)
+                {
+                    printf("\033[1;31mMessage cannot be empty\033[0m\n");
+                    continue;
+                }
+
+                write_server(sock, input);
+                printf("\033[1;32mMessage sent! Now please enter your move (%d-%d):\033[0m\n", first, last);
+                continue;
+            }
+
+            // Sinon, traiter comme un coup de jeu
+            int move_int = atoi(input);
             if (move_int >= first && move_int <= last)
             {
                 char buffer[BUF_SIZE];
@@ -688,13 +741,12 @@ void prompt_for_move(SOCKET sock, int joueur, const char *nom, int plateau[], in
             }
             else
             {
-                //in red 
-                printf("\033[1;31mInvalid input! Please enter a number between %d and %d:\033[0m\n", first, last);
+                printf("\033[1;31mInvalid input! Please enter a number between %d and %d or 'mp:pseudo:message':\033[0m\n", 
+                       first, last);
             }
         }
     }
 }
-
 /**
  * @brief Processes error messages from the server.
  *
