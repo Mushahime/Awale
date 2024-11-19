@@ -2,18 +2,18 @@
 #include "commands.h"
 #include "../awale.h"
 
-// Global variables
+// Global
 char pseudo[PSEUDO_MAX_LENGTH];
 char save[MAX_PARTIES][BUF_SAVE_SIZE+BUF_SIZE];
 int save_count = 0;
 int save_index = 0;
 bool partie_en_cours = false;
 
-
+// Main function
 int main(int argc, char **argv)
 {
     if (argc > 3 || argc < 3 || atoi(argv[2]) < 1024 || atoi(argv[2]) > 65535)
-    { // Ensure both address and name are provided
+    {
         printf("Error: arguments error\n");
         return EXIT_FAILURE;
     }
@@ -130,8 +130,6 @@ void handle_server_message(SOCKET sock, char *buffer)
     // Clear the current line and move cursor up
     printf("\r\033[K\033[A\033[K");
 
-    //printf("le buffer est %s\n", buffer);
-
     bool should_display_menu = false;
 
     if (strstr(buffer, "[Private") != NULL)
@@ -187,7 +185,6 @@ void handle_server_message(SOCKET sock, char *buffer)
     }
     else if (strstr(buffer, "[Spectator") != NULL)
     {
-        // write in yellow the message
         printf("\n");
         printf("\033[1;33m%s\033[0m\n", buffer);
         partie_en_cours = false;
@@ -372,7 +369,7 @@ void app(const char *address, int port)
     }
 
     clear_screen_custom2();
-    display_menu();  // Premier affichage du menu
+    display_menu(); 
 
     while (1)
     {
@@ -389,7 +386,6 @@ void app(const char *address, int port)
         if (FD_ISSET(STDIN_FILENO, &rdfs))
         {
             handle_user_input(sock);
-            // Ne pas afficher le menu ici, il sera affiché après le traitement de la commande
         }
         else if (FD_ISSET(sock, &rdfs))
         {

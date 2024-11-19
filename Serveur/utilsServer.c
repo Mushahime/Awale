@@ -1,5 +1,6 @@
 #include "utilsServer.h"
 
+// Global
 pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutex_t socket_mutex = PTHREAD_MUTEX_INITIALIZER;
 AwaleChallenge awale_challenges[MAX_CHALLENGES];
@@ -11,6 +12,7 @@ int partie_count = 0;
 #include <errno.h>
 #include <sys/select.h>
 
+// Function to initialize the program
 void init(void)
 {
 #ifdef WIN32
@@ -24,6 +26,7 @@ void init(void)
 #endif
 }
 
+// Function to end the program
 void end(void)
 {
     pthread_mutex_destroy(&clients_mutex);
@@ -64,11 +67,13 @@ int init_connection(int port)
     return sock;
 }
 
+// Function to end a connection
 void end_connection(SOCKET sock)
 {
     closesocket(sock);
 }
 
+// Function to read from a client
 int read_client(SOCKET sock, char *buffer)
 {
     int n = recv(sock, buffer, BUF_SIZE - 1, 0);
@@ -82,6 +87,7 @@ int read_client(SOCKET sock, char *buffer)
     return n;         // Return number of bytes received
 }
 
+// Function to write to a client
 void write_client(SOCKET sock, const char *buffer)
 {
     if (send(sock, buffer, strlen(buffer), 0) < 0)
@@ -91,6 +97,7 @@ void write_client(SOCKET sock, const char *buffer)
     }
 }
 
+// Function to remove a game from the list
 void remove_partie(int index, Client *clients)
 {
     if (index >= 0 && index < partie_count)
@@ -114,6 +121,7 @@ void remove_partie(int index, Client *clients)
     }
 }
 
+// Function to clear all clients
 void clear_clients(Client *clients, int actual)
 {
     int i = 0;
@@ -123,23 +131,23 @@ void clear_clients(Client *clients, int actual)
     }
 }
 
+// Function to remove a client from the list
 void remove_client(Client *clients, int to_remove, int *actual) {
-    // Vérifier d'abord si le client est un spectateur
     if (clients[to_remove].partie_index != -1) {
         PartieAwale *partie = &awale_parties[clients[to_remove].partie_index];
         bool isSpectator = true;
         
-        // Vérifier si c'est un joueur ou un spectateur
+        // Check if client is a player or spectator
         if (strcmp(partie->awale_challenge.challenger, clients[to_remove].name) == 0 ||
             strcmp(partie->awale_challenge.challenged, clients[to_remove].name) == 0) {
             isSpectator = false;
         }
 
         if (isSpectator) {
-            // Gérer la déconnexion d'un spectateur
+            // Manage spectator leaving
             remove_spec(partie->Spectators, to_remove, partie->nbSpectators, partie);
         } else {
-            // Gérer la déconnexion d'un joueur
+            // Manage player leaving
             int challenge_index = find_challenge(clients[to_remove].name);
             if (challenge_index != -1) {
                 const char *challenger = awale_challenges[challenge_index].challenger;
@@ -149,7 +157,7 @@ void remove_client(Client *clients, int to_remove, int *actual) {
                 for (int i = 0; i < *actual; i++) {
                     if (strcmp(clients[i].name, other_player) == 0) {
                         char msg[BUF_SIZE];
-                        snprintf(msg, BUF_SIZE, "\033[1;31mChallenge annulé : %s s'est déconnecté\033[0m\n",
+                        snprintf(msg, BUF_SIZE, "\033[1;31mChallenge stopped : %s deconnected\033[0m\n",
                                 clients[to_remove].name);
                         write_client(clients[i].sock, msg);
                         break;
@@ -158,7 +166,7 @@ void remove_client(Client *clients, int to_remove, int *actual) {
                 remove_challenge(challenge_index);
             }
 
-            // Notifier les autres joueurs et spectateurs
+            // Notify all players and spectators about game end
             int partie_index = clients[to_remove].partie_index;
             char msg[BUF_SIZE];
             snprintf(msg, BUF_SIZE, "\033[1;31mGame over! %s has left the game\033[0m\n",
@@ -178,6 +186,7 @@ void remove_client(Client *clients, int to_remove, int *actual) {
     (*actual)--;
 }
 
+// Function to remove a spectator from the list
 void remove_spec(Client *clients, int to_remove, int actual, PartieAwale *partie)
 {
     if (to_remove >= 0 && to_remove < actual)
@@ -190,6 +199,7 @@ void remove_spec(Client *clients, int to_remove, int actual, PartieAwale *partie
     }
 }
 
+// Function to send a message to all clients
 void send_message_to_all_clients(Client *clients, Client sender, int actual, const char *buffer, char from_server)
 {
     int i = 0;
@@ -204,14 +214,12 @@ void send_message_to_all_clients(Client *clients, Client sender, int actual, con
 
             if (from_server == 0)
             {
-                // Pour les messages normaux des utilisateurs
                 strncpy(message, sender.name, BUF_SIZE - 1);
                 strncat(message, " : ", sizeof message - strlen(message) - 1);
                 strncat(message, buffer, sizeof message - strlen(message) - 1);
             }
             else
             {
-                // Pour les messages système (join, disconnect, etc.)
                 strncpy(message, buffer, BUF_SIZE - 1);
             }
 
@@ -220,6 +228,7 @@ void send_message_to_all_clients(Client *clients, Client sender, int actual, con
     }
 }
 
+// Function to add a challenge to the list
 Client *findClientByPseudo(Client *clients, int actual, const char *name)
 {
     if (clients == NULL || name == NULL)

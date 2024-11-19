@@ -1,17 +1,17 @@
 #include "commands.h"
 #include <math.h>
 
-// Modifications dans la fonction check_pseudo dans server2.c
+// Function to check if a pseudo is valid
 int check_pseudo(Client *clients, int actual, const char *pseudo)
 {
-    // Vérification de la longueur
+    // length check
     size_t len = strlen(pseudo);
     if (len < PSEUDO_MIN_LENGTH || len >= PSEUDO_MAX_LENGTH)
     {
         return 0;
     }
 
-    // Vérification des caractères valides (lettres, chiffres, underscore)
+    // character check
     for (size_t i = 0; i < len; i++)
     {
         if (!isalnum(pseudo[i]) && pseudo[i] != '_')
@@ -20,7 +20,7 @@ int check_pseudo(Client *clients, int actual, const char *pseudo)
         }
     }
 
-    // Vérification de l'unicité
+    // pseudo check
     for (int i = 0; i < actual; i++)
     {
         if (strcasecmp(clients[i].name, pseudo) == 0)
@@ -32,6 +32,7 @@ int check_pseudo(Client *clients, int actual, const char *pseudo)
     return 1;
 }
 
+// Function to delete invalid games
 void clean_invalid_parties(Client *clients, int actual)
 {
     for (int i = partie_count - 1; i >= 0; i--)
@@ -69,6 +70,7 @@ void clean_invalid_parties(Client *clients, int actual)
     }
 }
 
+// Function to handle bio commands (setbio and getbio)
 void handle_bio_command(Client *clients, int actual, int client_index, const char *buffer)
 {
     char response[BUF_SIZE];
@@ -112,9 +114,10 @@ void handle_bio_command(Client *clients, int actual, int client_index, const cha
     }
 }
 
+// Function to find a challenge in the list
 int find_challenge(const char *name)
 {
-    // vérifier les défis en cours
+    // check if the player is a challenger or challenged in a challenge
     for (int i = 0; i < challenge_count; i++) {
         if (strcmp(awale_challenges[i].challenger, name) == 0 ||
             strcmp(awale_challenges[i].challenged, name) == 0) {
@@ -134,7 +137,7 @@ int find_challenge(const char *name)
     return -1;
 }
 
-// Fonction auxiliaire pour ajouter un défi
+// Function to add a challenge to the list
 void add_challenge(const char *challenger, const char *challenged, const char *message_rest)
 {
     printf("debug message rest : %s\n", message_rest);
@@ -183,7 +186,7 @@ void add_challenge(const char *challenger, const char *challenged, const char *m
     }
 }
 
-// Fonction auxiliaire pour supprimer un défi
+// Function to remove a challenge from the list
 void remove_challenge(int index)
 {
     if (index >= 0 && index < challenge_count)
@@ -256,7 +259,7 @@ void handle_quit_game(Client *clients, int actual, int client_index) {
     }
 }
 
-
+//function to react after the response of a challenged player
 void handle_awale_response(Client *clients, int actual, int client_index, const char *response)
 {
     int challenge_index = find_challenge(clients[client_index].name);
@@ -271,7 +274,7 @@ void handle_awale_response(Client *clients, int actual, int client_index, const 
 
     if (strcmp(response, "yes") == 0)
     {
-        // Vérifier s'il y a de la place pour une nouvelle partie
+        // Check if the server can handle more games
         if (partie_count >= MAX_PARTIES)
         {
             char error_msg[BUF_SIZE];
@@ -284,7 +287,7 @@ void handle_awale_response(Client *clients, int actual, int client_index, const 
         snprintf(start_msg, BUF_SIZE, "[Challenge] Game started between %s and %s\n",
                  challenger, challenged);
 
-        // Créer et initialiser la partie
+        // Create a new game
         PartieAwale nouvelle_partie = {0};
         JeuAwale jeu;
         initialiser_plateau(&jeu);
@@ -297,7 +300,7 @@ void handle_awale_response(Client *clients, int actual, int client_index, const 
         nouvelle_partie.in_save = false;
         nouvelle_partie.nbSpectators = 0;
 
-        // Mettre l'id dans les 2 clients
+        // Put the players in the game
         for (int i = 0; i < actual; i++)
         {
             if (strcmp(clients[i].name, challenger) == 0 ||
@@ -307,7 +310,7 @@ void handle_awale_response(Client *clients, int actual, int client_index, const 
             }
         }
 
-        // Préparer le message pour le plateau initial
+        // Prepared the initial board state
         char plateau_initial[BUF_SIZE] = {0};
         int offset = 0;
         offset += snprintf(plateau_initial, BUF_SIZE, "AWALE:");
@@ -317,7 +320,7 @@ void handle_awale_response(Client *clients, int actual, int client_index, const 
             offset += snprintf(plateau_initial + offset, BUF_SIZE - offset, "%d:", nouvelle_partie.jeu.plateau[i]);
         }
 
-        // Ajouter le pseudo du joueur qui commence et son numéro
+        // Add the player who starts and their number
         if (nouvelle_partie.tour == 1)
         {
             offset += snprintf(plateau_initial + offset, BUF_SIZE - offset, "%s:%d",
@@ -341,15 +344,15 @@ void handle_awale_response(Client *clients, int actual, int client_index, const 
             }
         }
 
-        // Sauvegarder la partie avant de supprimer le challenge
+        // Save the game
         awale_parties[partie_count] = nouvelle_partie;
         partie_count++;
 
-        // Ajouter les scores des joueurs
+        // Add the scores
         offset += snprintf(plateau_initial + offset, BUF_SIZE - offset, ":%d:%d",
                          nouvelle_partie.jeu.score_joueur1, nouvelle_partie.jeu.score_joueur2);
 
-        // Envoyer les messages aux joueurs
+        // Send the initial board state to the players
         for (int i = 0; i < actual; i++)
         {
             if (strcmp(clients[i].name, challenger) == 0 ||
@@ -365,12 +368,10 @@ void handle_awale_response(Client *clients, int actual, int client_index, const 
             }
         }
 
-        // Supprimer le challenge après que tout soit configuré
-        //remove_challenge(challenge_index);
     }
     else
     {
-        // Jeu refusé
+        // Game declined
         snprintf(start_msg, BUF_SIZE, "[Challenge] Game declined by %s\n", challenged);
         for (int i = 0; i < actual; i++)
         {
@@ -384,11 +385,12 @@ void handle_awale_response(Client *clients, int actual, int client_index, const 
     }
 }
 
+// Function after a challenge is asked by a player
 void handle_awale_challenge(Client *clients, int actual, int client_index, char *buffer)
 {
     printf("Partie count : %d\n", partie_count);
     printf("Challenge count : %d\n", challenge_count);
-    // Vérifier si le challenger a déjà un défi en cours
+    // Check if the player already has a pending challenge
     if (find_challenge(clients[client_index].name) != -1)
     {
         char response[BUF_SIZE];
@@ -399,7 +401,6 @@ void handle_awale_challenge(Client *clients, int actual, int client_index, char 
 
     char * target_pseudo = strtok(buffer, ":");
     char * message_rest = strtok(NULL, "");
-    printf("buffer restant : %s\n", message_rest);
 
     if (target_pseudo == NULL || message_rest == NULL)
     {
@@ -409,13 +410,13 @@ void handle_awale_challenge(Client *clients, int actual, int client_index, char 
         return;
     }
 
-    // Chercher le joueur cible
+    // Find the target player
     int found = 0;
     for (int i = 0; i < actual; i++)
     {
         if (strcmp(clients[i].name, target_pseudo) == 0)
         {
-            // Vérifier si la cible a déjà un défi en cours
+            // Check if the target player already has a pending challenge
             if (find_challenge(target_pseudo) != -1)
             {
                 char response[BUF_SIZE];
@@ -424,7 +425,7 @@ void handle_awale_challenge(Client *clients, int actual, int client_index, char 
                 return;
             }
 
-            // Ajouter le défi et envoyer la demande
+            // Add the challenge and send the request
             add_challenge(clients[client_index].name, target_pseudo, message_rest);
             printf("after add challenge value of challenge count : %d\n", challenge_count);
             char challenge_msg[BUF_SIZE];
@@ -444,6 +445,7 @@ void handle_awale_challenge(Client *clients, int actual, int client_index, char 
     }
 }
 
+// Function to handle a move in an Awale game
 void handle_awale_move(Client *clients, int actual, int client_index, const char *move)
 {
     int partie_index = clients[client_index].partie_index;
@@ -458,11 +460,11 @@ void handle_awale_move(Client *clients, int actual, int client_index, const char
     int case_depart = atoi(move);
     int joueur = partie->tour;
 
-    // Vérification case vide (ça aurait pu être traité après jouer coup)
+    // Empty case check
     if (jeu->plateau[case_depart] == 0)
     {
         char error_msg[BUF_SIZE];
-        // envoyer le numéro du joueur qui a joué le coup et le message d'erreur
+        // Send an error message to the player
         snprintf(error_msg, BUF_SIZE, "ERROR:%s:%d\n", INVALID_MOVE_EMPTY, joueur);
         printf("error_msg: %s\n", error_msg);
         write_client(clients[client_index].sock, error_msg);
@@ -474,7 +476,7 @@ void handle_awale_move(Client *clients, int actual, int client_index, const char
     if (coup_valide)
     {   
 
-        // Mettre a jour cout
+        // Update of save
         if (partie->cout_index <= BUF_SAVE_SIZE - 1)
         {
             partie->cout[partie->cout_index] = ':';
@@ -482,7 +484,7 @@ void handle_awale_move(Client *clients, int actual, int client_index, const char
         }
         if (partie->cout_index <= BUF_SAVE_SIZE - 2)
         {
-            // Ajouter le coup au cout (attention 10, 11 sonbt des chiffres à 2 chiffres)
+            // Update of save (care of the case where case_depart is greater than 9)
             if (case_depart < 10)
             {
                 partie->cout[partie->cout_index] = case_depart + '0';
@@ -499,10 +501,10 @@ void handle_awale_move(Client *clients, int actual, int client_index, const char
         printf("Debug - Cout : %s\n", partie->cout); // Debug
 
 
-        // Mettre à jour le tour
+        // Update the tour
         partie->tour = (joueur == 1) ? 2 : 1;
 
-        // Vérifier si la partie est terminée
+        // Check if the game is over
         if (verifier_fin_partie(jeu))
         {
             char end_msg[BUF_SIZE];
@@ -519,7 +521,7 @@ void handle_awale_move(Client *clients, int actual, int client_index, const char
                         jeu->score_joueur1, jeu->score_joueur2);
             }
 
-            // Envoyer le message de fin de partie
+            // Send the end message to the players
             for (int i = 0; i < actual; i++)
             {
                 if (strcmp(clients[i].name, partie->awale_challenge.challenger) == 0 ||
@@ -530,7 +532,7 @@ void handle_awale_move(Client *clients, int actual, int client_index, const char
                 }
             }
 
-            // Envoyer le message de fin de partie aux spectateurs avec [Spectator] devant
+            // Send the end message to the spectators [Spectator]
             char end_msg_spectator[BUF_SIZE];
             snprintf(end_msg_spectator, BUF_SIZE, "[Spectator] %s\n", end_msg);
             for (int i = 0; i < partie->nbSpectators; i++)
@@ -546,7 +548,7 @@ void handle_awale_move(Client *clients, int actual, int client_index, const char
             int classement_challenger = challenger->point;
             int classement_challenged = challenged->point;
 
-            // Maj du score des joueurs
+            // Update of the ranking
             float part_of_calcul_challenged = (float) (classement_challenger - classement_challenged) / 400;
             float part_of_calcul_challenger = (float) (classement_challenged - classement_challenger) / 400;
             float p_vict_challenger = 1/(1+pow(10, part_of_calcul_challenger));
@@ -554,7 +556,6 @@ void handle_awale_move(Client *clients, int actual, int client_index, const char
             printf("ratio challenger : %f\n", p_vict_challenger);
             printf("ratio challenged : %f\n", p_vict_challenged);
 
-            // Update des points
             if (jeu->score_joueur1 == jeu->score_joueur2)
             {
                 challenger->point += facteur*(0.5-p_vict_challenger);
@@ -571,9 +572,6 @@ void handle_awale_move(Client *clients, int actual, int client_index, const char
                 challenged->point += facteur*(1-p_vict_challenged);
             }
 
-            printf("classement challenger : %d\n", challenger->point);
-            printf("classement challenged : %d\n", challenged->point);
-
             // In_save
             partie->in_save = true;
 
@@ -582,7 +580,7 @@ void handle_awale_move(Client *clients, int actual, int client_index, const char
 
         else
         {
-            // Envoyer le plateau mis à jour
+            // Send the updated board state to the players
             char plateau_updated[BUF_SIZE] = {0};
             int offset = 0;
             offset += snprintf(plateau_updated, BUF_SIZE, "AWALE:");
@@ -620,14 +618,15 @@ void handle_awale_move(Client *clients, int actual, int client_index, const char
     }
     else
     {
-        // Coup invalide pour famine
+        // Invalid move for "Famine" rule
         char error_msg[BUF_SIZE];
-        // envoyer le numéro du joueur qui a joué le coup et le message d'erreur
+        // Send an error message to the player for invalid move
         snprintf(error_msg, BUF_SIZE, "ERROR:%s:%d\n", INVALID_MOVE_FAMINE, joueur);
         write_client(clients[client_index].sock, error_msg);
     }
 }
 
+// Function to ask a player to save the game (and actions in consequences)
 void handle_save(Client *clients, int actual, int client_index, const char *buffer)
 {
     char response[BUF_SIZE];
@@ -635,7 +634,7 @@ void handle_save(Client *clients, int actual, int client_index, const char *buff
     printf("save: %s\n", save);
     printf("buffer: %s\n", buffer);
 
-    // Trouver la partie
+    // Find the game
     int partie_index = clients[client_index].partie_index;
     if (partie_index == -1)
     {
@@ -645,7 +644,7 @@ void handle_save(Client *clients, int actual, int client_index, const char *buff
 
     PartieAwale *partie = &awale_parties[partie_index];
     
-    // Trouver les deux joueurs
+    // Find the players in the game
     Client *challenger = findClientByPseudo(clients, actual, partie->awale_challenge.challenger);
     Client *challenged = findClientByPseudo(clients, actual, partie->awale_challenge.challenged);
     
@@ -655,7 +654,7 @@ void handle_save(Client *clients, int actual, int client_index, const char *buff
         return;
     }
 
-    // Enregistrer la réponse et marquer que ce joueur a répondu
+    // Save the response and mark that this player has responded
     if (strcmp(save, "yes") == 0)
     {
         if (partie->cout_index <= BUF_SAVE_SIZE - 1)
@@ -673,13 +672,11 @@ void handle_save(Client *clients, int actual, int client_index, const char *buff
         snprintf(response, BUF_SAVE_SIZE, "%d\n", -1);
         write_client(clients[client_index].sock, response);
     }
-
-    // Marquer que ce joueur a répondu
     clients[client_index].partie_index = -1;
 
     free(save);
 
-    // Si les deux joueurs ont répondu (-1), on peut nettoyer la partie
+    // If both players have responded (-1), we can clean up the game
     if (challenger->partie_index == -1 && challenged->partie_index == -1)
     {
         int partie_challenge_index = find_challenge(partie->awale_challenge.challenger);
@@ -691,6 +688,7 @@ void handle_save(Client *clients, int actual, int client_index, const char *buff
     }
 }
 
+// Function to handle a private message to someone
 void handle_private_message(Client *clients, int actual, int sender_index, const char *buffer)
 {
     char target_pseudo[BUF_SIZE];
@@ -730,9 +728,9 @@ void handle_private_message(Client *clients, int actual, int sender_index, const
     char error_msg[BUF_SIZE];
     snprintf(error_msg, BUF_SIZE, "User %s not found.\n", target_pseudo);
     write_client(clients[sender_index].sock, error_msg);
-    //free(msg_start);
 }
 
+// Function to list all connected clients
 void list_connected_clients(Client *clients, int actual, int requester_index)
 {
     char list[BUF_SIZE * MAX_CLIENTS] = "Connected users:\n";
@@ -751,11 +749,12 @@ void list_connected_clients(Client *clients, int actual, int requester_index)
     write_client(clients[requester_index].sock, list);
 }
 
+// Function who try to accept a spectator in a "game" if the game exists and is not full/private
 void handle_spec(Client *clients, int actual, int client_index, const char *buffer)
 {
     printf("buffer: %s\n", buffer); //pseudo
 
-    // Trouver la partie
+    // Find the game
     Client * player = findClientByPseudo(clients, actual, buffer);
     if (player == NULL)
     {
@@ -803,19 +802,18 @@ void handle_spec(Client *clients, int actual, int client_index, const char *buff
     }
 
 
-    // Ajouter le client à la liste des spectateurs
+    // Add the client to the spectators
     partie->Spectators[partie->nbSpectators] = clients[client_index];
     partie->nbSpectators++;
     
-    // Le client est in_game
+    // Update the client
     clients[client_index].partie_index = player->partie_index;
     
     write_client(clients[client_index].sock, "You are now spectating this game\n");
     sleep(1);
     
 
-    // Envoyer le plateau actuel
-    // TODO: Envoyer le plateau actuel
+    // Send the initial board state to the spectator
     char plateau_updated[BUF_SIZE] = {0};
     int offset = 0;
     offset += snprintf(plateau_updated, BUF_SIZE, "AWALE:");
@@ -840,6 +838,7 @@ void handle_spec(Client *clients, int actual, int client_index, const char *buff
     write_client(clients[client_index].sock, plateau_updated);
 }
 
+// Function to list all games in progress
 void handle_awale_list(Client *clients, int actual, int client_index)
 {
     //clean_invalid_parties(clients, actual);

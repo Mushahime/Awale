@@ -1,5 +1,6 @@
 #include "awale.h"
 
+// Function to initialize the game
 void initialiser_plateau(JeuAwale *jeu)
 {
     for (int i = 0; i < TAILLE_PLATEAU; i++)
@@ -10,9 +11,10 @@ void initialiser_plateau(JeuAwale *jeu)
     jeu->score_joueur2 = 0;
 }
 
+// Function to display the game board
 void afficher_plateau(JeuAwale *jeu)
 {
-    printf("\nJoueur 2:\n");
+    printf("\nPlayer 2:\n");
     printf("Cases :  11  10   9   8   7   6\n");
     printf("       [%2d][%2d][%2d][%2d][%2d][%2d]\n",
            jeu->plateau[11], jeu->plateau[10], jeu->plateau[9],
@@ -21,13 +23,14 @@ void afficher_plateau(JeuAwale *jeu)
            jeu->plateau[0], jeu->plateau[1], jeu->plateau[2],
            jeu->plateau[3], jeu->plateau[4], jeu->plateau[5]);
     printf("Cases :   0   1   2   3   4   5\n");
-    printf("Joueur 1\n");
+    printf("Player 1\n");
     printf("\nScore\nJ1: %d\nJ2: %d\n", jeu->score_joueur1, jeu->score_joueur2);
 }
 
+// Function to display the game board (v2)
 void afficher_plateau2(int plateau[TAILLE_PLATEAU], int score_joueur1, int score_joueur2)
 {
-    printf("\nJoueur 2:\n");
+    printf("\nPlayer 2:\n");
     printf("Cases :  11  10   9   8   7   6\n");
     printf("       [%2d][%2d][%2d][%2d][%2d][%2d]\n",
            plateau[11], plateau[10], plateau[9],
@@ -36,12 +39,14 @@ void afficher_plateau2(int plateau[TAILLE_PLATEAU], int score_joueur1, int score
            plateau[0], plateau[1], plateau[2],
            plateau[3], plateau[4], plateau[5]);
     printf("Cases :   0   1   2   3   4   5\n");
-    printf("Joueur 1\n");
+    printf("Player 1\n");
     printf("\nScore\nJ1: %d\nJ2: %d\n", score_joueur1, score_joueur2);
 }
 
+// Function to play a move
 bool jouer_coup(JeuAwale *jeu, int joueur, int case_depart)
 {
+    // Check if the move is valid
     if ((joueur == 1 && (case_depart < 0 || case_depart >= 6)) ||
         (joueur == 2 && (case_depart < 6 || case_depart >= 12)) ||
         jeu->plateau[case_depart] == 0)
@@ -49,6 +54,7 @@ bool jouer_coup(JeuAwale *jeu, int joueur, int case_depart)
         return false;
     }
 
+    // Move simulation
     int plateau_initial[TAILLE_PLATEAU];
     for (int i = 0; i < TAILLE_PLATEAU; i++)
     {
@@ -73,6 +79,7 @@ bool jouer_coup(JeuAwale *jeu, int joueur, int case_depart)
         }
     }
 
+    // Check if the move starves the opponent or starves us   
     bool famine_adversaire = true;
     bool famine_joueur = true;
     if (joueur == 1)
@@ -114,6 +121,7 @@ bool jouer_coup(JeuAwale *jeu, int joueur, int case_depart)
         }
     }
 
+    //if the move starve the opponent, the move is invalid (we restore the initial state)
     if (famine_adversaire)
     {
         for (int i = 0; i < TAILLE_PLATEAU; i++)
@@ -122,10 +130,10 @@ bool jouer_coup(JeuAwale *jeu, int joueur, int case_depart)
         }
         jeu->score_joueur1 = score_initial_j1;
         jeu->score_joueur2 = score_initial_j2;
-        printf("Coup invalide. L'adversaire ne doit pas avoir de famine.\n");
+        printf("Invalid play, need to feed your oppenent.\n");
         return false;
     }
-
+    //if the move starve the player, we end the game and add the remaining seeds to the opponent's score
     if (famine_joueur)
     {
         for (int i = 0; i < TAILLE_PLATEAU; i++)
@@ -143,6 +151,7 @@ bool jouer_coup(JeuAwale *jeu, int joueur, int case_depart)
         return true;
     }
 
+    // Score update
     int score = 0;
     if (joueur == 1)
     {
@@ -178,6 +187,7 @@ bool jouer_coup(JeuAwale *jeu, int joueur, int case_depart)
     return true;
 }
 
+// Function to check if the opponent can be fed
 bool nourrir_adversaire_possible(JeuAwale *jeu, int joueur)
 {
     int debut = (joueur == 1) ? 0 : 6;
@@ -191,14 +201,14 @@ bool nourrir_adversaire_possible(JeuAwale *jeu, int joueur)
             jeu->plateau[i] = 0;
             int pos = i;
 
-            // Simulation du mouvement
+            // Simulation
             for (int j = 0; j < graines; j++)
             {
                 pos = (pos + 1) % 12;
                 jeu->plateau[pos]++;
             }
 
-            // Vérifier si le mouvement nourrit l'adversaire
+            // Check if the move feeds the opponent
             bool adversaire_nourri = false;
             if (joueur == 1)
             {
@@ -217,7 +227,7 @@ bool nourrir_adversaire_possible(JeuAwale *jeu, int joueur)
                 }
             }
 
-            // Annuler le mouvement pour restaurer l'état du plateau
+            // Restore the initial state
             pos = i;
             for (int j = 0; j < graines; j++)
             {
@@ -233,12 +243,13 @@ bool nourrir_adversaire_possible(JeuAwale *jeu, int joueur)
     return false;
 }
 
+// Function to check if the game is over
 bool verifier_fin_partie(JeuAwale *jeu)
 {
-    // Vérifier si un joueur a atteint ou dépassé 24 points
-    if (jeu->score_joueur1 >= 2 || jeu->score_joueur2 >= 2) // on laisse à 2 pour les tests
+    // Check if a player has more than 24 seeds
+    if (jeu->score_joueur1 >= 2 || jeu->score_joueur2 >= 2) // For now, we keep 2 for the tests
     {
-        // Ramasser toutes les graines restantes
+        // Take all the remaining seeds
         for (int i = 0; i < TAILLE_PLATEAU; i++)
         {
             if (i < 6)
@@ -254,7 +265,8 @@ bool verifier_fin_partie(JeuAwale *jeu)
         return true;
     }
 
-    bool joueur1_vide = true;
+    // Not relevant for now
+    /*bool joueur1_vide = true;
     bool joueur2_vide = true;
 
     for (int i = 0; i < 6; i++)
@@ -268,11 +280,12 @@ bool verifier_fin_partie(JeuAwale *jeu)
             joueur2_vide = false;
     }
 
+    // Check if a player can feed the opponent
     if (joueur1_vide || joueur2_vide)
     {
         if (!nourrir_adversaire_possible(jeu, joueur1_vide ? 2 : 1))
         {
-            // Ramasser toutes les graines restantes
+            // Get all the remaining seeds
             for (int i = 0; i < TAILLE_PLATEAU; i++)
             {
                 if (jeu->plateau[i] > 0)
@@ -290,7 +303,7 @@ bool verifier_fin_partie(JeuAwale *jeu)
             }
             return true;
         }
-    }
+    }*/
 
     return false;
 }

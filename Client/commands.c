@@ -2,6 +2,7 @@
 #include "../awale.h"
 #include <string.h>
 #include <time.h>
+
 /**
  * @brief Handles sending a public message to the server.
  *
@@ -17,7 +18,6 @@ void handle_send_public_message(SOCKET sock)
         write_server(sock, buffer);
     }
 }
-
 
 /**
  * @brief Handles sending a private message to a specific user.
@@ -74,12 +74,12 @@ void handle_save()
     {
         printf("\033[1;34mSave %d:\033[0m\n", i + 1);
 
-        // Créer une copie temporaire du save pour le strtok
+        // Copy the save to a temporary buffer to avoid modifying the original
         char temp[BUF_SAVE_SIZE];
         strncpy(temp, save[i], BUF_SAVE_SIZE);
         temp[BUF_SAVE_SIZE-1] = '\0';
 
-        char *save_ptr;  // Pour strtok_r
+        char *save_ptr;  // for strtok_r
         char *save_date = strtok_r(temp, "_", &save_ptr);
         printf("Date: %s -> ", save_date);
 
@@ -117,9 +117,9 @@ void handle_save()
 }
 
 void demo_partie(const char *buffer) {
-    char *temp_buffer = malloc(strlen(buffer) + 2); // +2 pour ':' et '\0'
+    char *temp_buffer = malloc(strlen(buffer) + 2); // for the ':' and '\0'
     if (!temp_buffer) {
-        perror("Erreur allocation mémoire");
+        perror("Error allocating memory");
         return;
     }
     
@@ -143,9 +143,9 @@ void demo_partie(const char *buffer) {
     int tour_int = atoi(tour);
     
     if (tour_int == 1) {
-        printf("C'est %s qui a commencé (0-5)\n", challenger);
+        printf("It's %s who started (0-5)\n", challenger);
     } else {
-        printf("C'est %s qui a commencé (6-11)\n", challenged);
+        printf("It's %s who started (6-11)\n", challenged);
     }
     
     sleep(2);
@@ -155,7 +155,7 @@ void demo_partie(const char *buffer) {
         int coup_int = atoi(coup);
         printf("\n");
         printf("--------------------------------\n");
-        printf("Coup joue: %d\n", coup_int);
+        printf("Shout played: %d\n", coup_int);
         jouer_coup(&jeu, tour_int, coup_int);
         afficher_plateau(&jeu);
         sleep(2);
@@ -164,15 +164,15 @@ void demo_partie(const char *buffer) {
     }
     printf("--------------------------------\n");
     printf("\n");
-    printf("Fin de la partie\n");
+    printf("End of the game\n");
     int score_J2 = jeu.plateau[6] + jeu.plateau[7] + jeu.plateau[8] + jeu.plateau[9] + jeu.plateau[10] + jeu.plateau[11] + jeu.score_joueur1;
     int score_J1 = jeu.plateau[0] + jeu.plateau[1] + jeu.plateau[2] + jeu.plateau[3] + jeu.plateau[4] + jeu.plateau[5] + jeu.score_joueur2;
-    printf("Score final: J1: %d, J2: %d\n", score_J1, score_J2);
+    printf("Final score: P1: %d, P2: %d\n", score_J1, score_J2);
     
     if (score_J1 == score_J2) {
-        printf("Match nul!\n");
+        printf("Draw!\n");
     } else {
-        printf("Le gagnant est %s!\n", (score_J1 > score_J2) ? challenger : challenged);
+        printf("The winner is %s!\n", (score_J1 > score_J2) ? challenger : challenged);
     }
     
     free(temp_buffer);
@@ -707,9 +707,8 @@ bool process_fight_message(SOCKET sock, char *buffer)
  */
 void process_game_over_message(SOCKET sock, char *buffer)
 {
-    printf("\033[1;33m%s\033[0m\n", buffer); // Jaune pour les messages de fin de partie
+    printf("\033[1;33m%s\033[0m\n", buffer); 
     partie_en_cours = false;
-    //display_menu(); // Afficher le menu après la fin de partie
 }
 
 
@@ -752,6 +751,6 @@ void process_challenge_message(char *buffer)
 #else
         sleep(3); // Unix sleep in seconds
 #endif
-        // Ne pas afficher le menu ici car une partie commence
+
     }
 }

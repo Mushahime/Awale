@@ -1,8 +1,10 @@
 #include "awale.h"
 
+// Not Relevant
+
 int main()
 {
-    JeuAwale jeu;
+    /*JeuAwale jeu;
     initialiser_plateau(&jeu);
 
     int joueur = 1;
@@ -37,7 +39,7 @@ int main()
     else
     {
         printf("Match nul!\n");
-    }
+    }*/
 
     return 0;
 }

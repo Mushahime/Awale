@@ -9,6 +9,7 @@
 #include <sys/select.h>
 #include "utilsServer.h"
 
+// Function to initialize the program
 void app(int port)
 {
     SOCKET sock = init_connection(port);
@@ -69,7 +70,7 @@ void app(int port)
 
             buffer[read_size] = 0; // Ensure null termination
 
-            // Vérification du pseudo
+            // pseudo check
             if (!check_pseudo(clients, actual, buffer))
             {
                 const char *error_msg;
@@ -90,7 +91,7 @@ void app(int port)
                 continue;
             }
 
-            // Si on arrive ici, le pseudo est valide
+            // now, valid pseudo
             max = csock > max ? csock : max;
 
             Client c = {csock};
@@ -119,15 +120,17 @@ void app(int port)
                     Client client = clients[i];
                     int c = read_client(clients[i].sock, buffer);
 
+                    // Client disconnected
                     if (c == 0)
                     {
                         closesocket(clients[i].sock);
                         remove_client(clients, i, &actual);
-                        sleep(2);
+                        sleep(0.5);
                         strncpy(buffer, client.name, BUF_SIZE - 1);
                         strncat(buffer, " disconnected!\n", BUF_SIZE - strlen(buffer) - 1);
                         send_message_to_all_clients(clients, client, actual, buffer, 1);
                     }
+                    // Others cases
                     else
                     {
                         if (strncmp(buffer, "list:", 5) == 0)
@@ -189,7 +192,7 @@ void app(int port)
     end_connection(sock);
 }
 
-
+// Main function
 int main(int argc, char **argv)
 {
 
