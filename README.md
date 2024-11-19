@@ -12,6 +12,5 @@ warning : listen socket is like a FIFO for the connection and pseudo is unique
 - faire le readme/manuel user
 
 Pendant la séance :
-- retester la famine
-- revoir affichage (certains \n sont pas là du genre quand on ctrl c, etc)
+- tester
 - remmettre à 24 le score pour le jeu awale
