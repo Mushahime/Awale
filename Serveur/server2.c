@@ -130,6 +130,7 @@ static void app(void)
                     }
                     else
                     {
+                        send_message_to_all_clients(clients, client, actual, buffer, 1);
                         if (strncmp(buffer, "list:", 5) == 0)
                         {
                             list_connected_clients(clients, actual, i);
@@ -166,6 +167,7 @@ static void app(void)
                         }
                         else if (strncmp(buffer, "spectators:", 11) == 0)
                         {
+                            printf("handling the spectators");
                             handle_spectators(clients, actual, i, buffer);
                         }
                         else

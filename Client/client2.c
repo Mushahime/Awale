@@ -352,6 +352,7 @@ void handle_privacy(SOCKET sock)
             {
                 // If private, prompt to set spectators
                 handle_allowed_spectators(sock);
+                printf("Game set to private.\n");
             }
             else
             {
@@ -396,7 +397,6 @@ void handle_allowed_spectators(SOCKET sock)
         printf("Spectator list sent to server.\n");
     }
 }
-
 
 // void handle_allowed_spectators(SOCKET sock)
 // {

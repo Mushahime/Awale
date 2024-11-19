@@ -516,24 +516,42 @@ void initSpectators(Client *clients, int actual, PartieAwale *partieAwale) // re
         partieAwale->spectators[1] = *player2;
     }
 }
-
 void handle_spectators(Client *clients, int actual, int client_index, const char *buffer)
 {
-    // The buffer contains "spectators:<list of spectators>"
+    // Validate that buffer starts with "spectators:"
+    if (strncmp(buffer, "spectators:", 11) != 0) {
+        write_client(clients[client_index].sock, "Malformed spectators command.\n");
+        return;
+    }
+
     // Extract the list of spectator names
-    write_client(clients[client_index].sock, "error handling spectators");
     const char *spectators_list = buffer + strlen("spectators:");
+    printf("Spectators list: %s\n", spectators_list); // Safe printf
+
     char spectators_buffer[BUF_SIZE];
     strncpy(spectators_buffer, spectators_list, BUF_SIZE - 1);
     spectators_buffer[BUF_SIZE - 1] = '\0';
+
+    // Validate client_index
+    if (client_index < 0 || client_index >= actual) {
+        write_client(clients[client_index].sock, "Invalid client index.\n");
+        return;
+    }
 
     // Check if the client is in a game
     int partie_index = clients[client_index].partie_index;
     if (partie_index == -1)
     {
-        // The client is not in a game
         char error_msg[BUF_SIZE];
         snprintf(error_msg, BUF_SIZE, "You are not currently in a game.\n");
+        write_client(clients[client_index].sock, error_msg);
+        return;
+    }
+
+    // Validate partie_index
+    if (partie_index < 0 || partie_index >= partie_count) { // assuming partie_count is the number of active games
+        char error_msg[BUF_SIZE];
+        snprintf(error_msg, BUF_SIZE, "Invalid game index.\n");
         write_client(clients[client_index].sock, error_msg);
         return;
     }
@@ -548,11 +566,14 @@ void handle_spectators(Client *clients, int actual, int client_index, const char
         // Initialize spectators if not already initialized
         if (partie->spectators == NULL)
         {
-            partie->spectators = malloc(sizeof(Client) * 100); // Define MAX_SPECTATORS as needed
+            partie->spectators = malloc(sizeof(Client) * MAX_CLIENTS);
             if (partie->spectators == NULL)
             {
                 perror("Failed to allocate memory for spectators");
-                exit(EXIT_FAILURE);
+                char msg[BUF_SIZE];
+                snprintf(msg, BUF_SIZE, "Internal server error.\n");
+                write_client(clients[client_index].sock, msg);
+                return;
             }
             partie->nbSpectators = 0;
         }
@@ -603,7 +624,15 @@ void handle_spectators(Client *clients, int actual, int client_index, const char
                     else
                     {
                         // Add the spectator to the game
-                        addSpectator(partie, clients[i]);
+                        if (partie->nbSpectators >= MAX_CLIENTS)
+                        {
+                            char msg[BUF_SIZE];
+                            snprintf(msg, BUF_SIZE, "Cannot add more spectators. Maximum reached.\n");
+                            write_client(clients[client_index].sock, msg);
+                            continue;
+                        }
+                        
+                        partie->spectators[partie->nbSpectators++] = clients[i];
 
                         // Inform the spectator
                         char msg[BUF_SIZE];
@@ -661,6 +690,7 @@ void handle_spectators(Client *clients, int actual, int client_index, const char
         write_client(clients[client_index].sock, response);
     }
 }
+
 
 void construct_game_state_message(PartieAwale *partie, char *message, size_t message_size)
 {
