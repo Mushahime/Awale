@@ -17,8 +17,6 @@ int main(int argc, char **argv)
         printf("Error: arguments error\n");
         return EXIT_FAILURE;
     }
-    printf("init OK\n");
-
     init();
     app(argv[1], atoi(argv[2]));
     end();
@@ -68,7 +66,7 @@ int get_valid_pseudo(SOCKET sock)
 
     while (1)
     {
-        printf("\033[1;33mEnter your nickname (2-%d characters, letters, numbers, underscore only): \033[0m",
+        printf("\033[1;32mEnter your nickname (2-%d characters, letters, numbers, underscore only): \033[0m",
                PSEUDO_MAX_LENGTH - 1);
         fflush(stdout);
 
@@ -132,40 +130,49 @@ void handle_server_message(SOCKET sock, char *buffer)
 
     bool should_display_menu = false;
 
+    // for private message
     if (strstr(buffer, "[Private") != NULL)
     {
         process_private_message(buffer);
         should_display_menu = !partie_en_cours;
     }
+    // for public message
     else if (strstr(buffer, "[Public") != NULL)
     {
         printf("\n");
         printf("\033[1;32m%s\033[0m\n", buffer);
         should_display_menu = !partie_en_cours;
     }
+    // for game declined
     else if (strstr(buffer, "declined") != NULL)
     {
+        process_challenge_message(buffer);
         partie_en_cours = false;
         should_display_menu = !partie_en_cours;
     }
+    // for game challenge response (when not declined)
     else if (strstr(buffer, "[Challenge") != NULL)
     {
         process_challenge_message(buffer);
     }
+    // for awale move 
     else if (strncmp(buffer, "AWALE:", 6) == 0)
     {
         process_awale_message(sock, buffer + 6);
     }
+    // for error message during the game
     else if (strncmp(buffer, "ERROR:", 6) == 0)
     {
         process_error_message(sock, buffer);
     }
+    // for fail message for spectator
     else if (strncmp(buffer, "FAIL:", 5) == 0)
     {
         printf("\033[1;32m%s\033[0m\n", buffer + 5);
         partie_en_cours = false;
         should_display_menu = true;
     }
+    // for send challenge
     else if (strstr(buffer, "fight") != NULL)
     {
         printf("\n");
@@ -183,6 +190,7 @@ void handle_server_message(SOCKET sock, char *buffer)
         
         printf("\n");
     }
+    // for spectator when the game is over
     else if (strstr(buffer, "[Spectator") != NULL)
     {
         printf("\n");
@@ -190,6 +198,7 @@ void handle_server_message(SOCKET sock, char *buffer)
         partie_en_cours = false;
         should_display_menu = true;
     }
+    // for game over message (not for spectator)
     else if (strstr(buffer, "over") != NULL)
     {
         process_game_over_message(sock, buffer);
@@ -201,12 +210,14 @@ void handle_server_message(SOCKET sock, char *buffer)
             saver(sock, buffer);
         }
     }
+    // for spectator when he is accepted in a game
     else if (strstr(buffer, "spectating")!=NULL)
     {
         partie_en_cours = true;
         printf("\033[1;32m%s\033[0m\n", buffer);
         should_display_menu = !partie_en_cours;
     }
+    // rest
     else
     {
         printf("\n");
@@ -236,6 +247,7 @@ void handle_user_input(SOCKET sock)
     if (fgets(input, sizeof(input), stdin) == NULL)
         return;
 
+    // Handle game input
     if (partie_en_cours)
     {
         if (strncmp(input, "quit", 4) == 0)
@@ -257,6 +269,7 @@ void handle_user_input(SOCKET sock)
     }
     choice = atoi(input);
 
+    // Handle user choice (see in game)
     switch (choice)
     {
     case SEND_PUBLIC_MESSAGE:
@@ -377,16 +390,19 @@ void app(const char *address, int port)
         FD_SET(STDIN_FILENO, &rdfs);
         FD_SET(sock, &rdfs);
 
+        // If there is input to read
         if (select(sock + 1, &rdfs, NULL, NULL, NULL) == -1)
         {
             perror("select()");
             exit(errno);
         }
 
+        // If there is input from the user
         if (FD_ISSET(STDIN_FILENO, &rdfs))
         {
             handle_user_input(sock);
         }
+        // If there is input from the server
         else if (FD_ISSET(sock, &rdfs))
         {
             int n = read_server(sock, buffer);

@@ -30,7 +30,8 @@ void app(int port)
         {
             FD_SET(clients[i].sock, &rdfs);
         }
-
+        
+        // Management (read/write) of the sockets
         if (select(max + 1, &rdfs, NULL, NULL, NULL) == -1)
         {
             perror("select()");
@@ -41,6 +42,7 @@ void app(int port)
         {
             break;
         }
+        // New client
         else if (FD_ISSET(sock, &rdfs))
         {
             SOCKADDR_IN csin = {0};
@@ -110,6 +112,7 @@ void app(int port)
             snprintf(connect_msg, BUF_SIZE, "%s has joined the chat!\n", buffer);
             send_message_to_all_clients(clients, c, actual, connect_msg, 1);
         }
+        // New message from a client
         else
         {
             int i = 0;
@@ -132,44 +135,54 @@ void app(int port)
                     }
                     // Others cases
                     else
-                    {
+                    {   
+                        // for listing all connected clients
                         if (strncmp(buffer, "list:", 5) == 0)
                         {
                             list_connected_clients(clients, actual, i);
                         }
+                        // for private message
                         else if (strncmp(buffer, "mp:", 3) == 0)
                         {
                             handle_private_message(clients, actual, i, buffer);
                         }
+                        // for bio
                         else if (strncmp(buffer, "setbio:", 7) == 0 ||
                                  strncmp(buffer, "getbio:", 7) == 0)
                         {
                             handle_bio_command(clients, actual, i, buffer);
                         }
+                        // for awale challenge
                         else if (strncmp(buffer, "awale:", 6) == 0)
                         {
                             handle_awale_challenge(clients, actual, i, buffer + 6);
                         }
+                        // for awale response
                         else if (strncmp(buffer, "awale_response:", 15) == 0)
                         {
                             handle_awale_response(clients, actual, i, buffer + 15);
                         }
+                        // for playing awale
                         else if (strncmp(buffer, "awale_move:", 11) == 0)
                         {
                             handle_awale_move(clients, actual, i, buffer + 11);
                         }
+                        // for listing all games in progress
                         else if (strncmp(buffer, "awale_list:", 11) == 0)
                         {
                             handle_awale_list(clients, actual, i);
                         }
+                        // for saving the game
                         else if (strncmp(buffer, "save:", 5) == 0)
                         {
                             handle_save(clients, actual, i, buffer + 5);
                         }
+                        // for spectator (try to spectate a game)
                         else if (strncmp(buffer, "spec:", 5) == 0)
                         {
                             handle_spec(clients, actual, i, buffer + 5);
                         }
+                        // for quitting the game (spectator or player)
                         else if (strncmp(buffer, "quit_game:", 10) == 0)
                         {
                             handle_quit_game(clients, actual, i);

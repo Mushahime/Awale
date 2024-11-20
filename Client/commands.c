@@ -741,6 +741,7 @@ void process_system_message(char *buffer)
  */
 void process_challenge_message(char *buffer)
 {
+    fflush(stdout);
     printf("\033[1;33m%s\033[0m\n", buffer); // Yellow for challenge messages
     if (strstr(buffer, "Game started") != NULL)
     {
