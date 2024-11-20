@@ -60,6 +60,9 @@ void handle_list_users(SOCKET sock)
  * @brief Allow to see the save of the game
  *
  */
+/**
+ * @brief Allow to see the save of the game
+ */
 void handle_save()
 {
     if (save_count == 0)
@@ -70,16 +73,16 @@ void handle_save()
         return;
     }
 
+    // Afficher les sauvegardes disponibles
     for (int i = 0; i < save_count; i++)
     {
         printf("\033[1;34mSave %d:\033[0m\n", i + 1);
 
-        // Copy the save to a temporary buffer to avoid modifying the original
         char temp[BUF_SAVE_SIZE];
         strncpy(temp, save[i], BUF_SAVE_SIZE);
         temp[BUF_SAVE_SIZE-1] = '\0';
 
-        char *save_ptr;  // for strtok_r
+        char *save_ptr;
         char *save_date = strtok_r(temp, "_", &save_ptr);
         printf("Date: %s -> ", save_date);
 
@@ -90,27 +93,55 @@ void handle_save()
         printf("Challenged : %s\n", challenged);
     }
 
-    // Ask the user if he wants to load a save
-    char input[BUF_SIZE];
     printf("\033[1;34mEnter the number of the save you want to load: \033[0m");
-    if (fgets(input, sizeof(input), stdin) != NULL)
-    {
-        int save_choice = atoi(input);
-        if (save_choice > 0 && save_choice <= save_count)
-        {
-            save_index = save_choice - 1;
-            printf("\033[1;32mSave loaded successfully!\033[0m\n");
-            printf("save: %s\n", save[save_index]);
-            demo_partie(save[save_index]);
-            display_menu();
+    fflush(stdout);
+
+    fd_set rdfs;
+    struct timeval tv;
+    char input[BUF_SIZE];
+
+    while (1) {
+        if (partie_en_cours) {
             return;
         }
-        else
-        {
-            printf("\n");
-            printf("\033[1;31mInvalid save choice.\033[0m\n");
-            printf("\033[1;31mReturning to main menu...\033[0m\n");
-            display_menu();
+
+        FD_ZERO(&rdfs);
+        FD_SET(STDIN_FILENO, &rdfs);
+
+        tv.tv_sec = 0;
+        tv.tv_usec = 100000;
+
+        int ret = select(STDIN_FILENO + 1, &rdfs, NULL, NULL, &tv);
+        if (ret == -1) {
+            perror("select()");
+            return;
+        }
+
+        if (FD_ISSET(STDIN_FILENO, &rdfs)) {
+            if (fgets(input, sizeof(input), stdin) != NULL) {
+                int save_choice = atoi(input);
+                if (save_choice > 0 && save_choice <= save_count)
+                {
+                    save_index = save_choice - 1;
+                    printf("\033[1;32mSave loaded successfully!\033[0m\n");
+                    printf("save: %s\n", save[save_index]);
+                    demo_partie(save[save_index]);
+                    display_menu();
+                    return;
+                }
+                else
+                {
+                    printf("\n");
+                    printf("\033[1;31mInvalid save choice.\033[0m\n");
+                    printf("\033[1;31mReturning to main menu...\033[0m\n");
+                    display_menu();
+                    return;
+                }
+            }
+        }
+
+        // Vérifier si une partie a commencé
+        if (partie_en_cours) {
             return;
         }
     }
@@ -184,46 +215,96 @@ void demo_partie(const char *buffer) {
  *
  * @param sock The socket connected to the server.
  */
+/**
+ * @brief Handles the bio options menu.
+ *
+ * @param sock The socket connected to the server.
+ */
 void handle_bio_options(SOCKET sock)
 {
-    char buffer[BUF_SIZE];
+    fd_set rdfs;
+    struct timeval tv;
     char input[BUF_SIZE];
+    
     printf("\n\033[1;36m=== Bio Options ===\033[0m\n");
     printf("1. Set your bio\n");
     printf("2. View someone's bio\n");
     printf("Others. Return to main menu\n");
     printf("Choice: ");
+    fflush(stdout);
 
-    if (fgets(input, sizeof(input), stdin) != NULL)
-    {
-        int bio_choice = atoi(input);
-        if (bio_choice == 1)
-        {
-            char bio[MAX_BIO_LENGTH] = "setbio:";
-            printf("\033[1;34mEnter your bio:\033[0m\n");
-            get_multiline_input(bio + 7, sizeof(bio) - 7);
-            write_server(sock, bio);
+    while (1) {
+        if (partie_en_cours) {
+            return;  // Sort directement si une partie a commencé
         }
-        else if (bio_choice == 2)
-        {
-            printf("\033[1;34mEnter nickname to view bio: \033[0m");
-            if (fgets(input, sizeof(input), stdin) != NULL)
-            {
-                input[strcspn(input, "\n")] = '\0'; // Remove newline
-                snprintf(buffer, sizeof(buffer), "getbio:%s", input);
-                write_server(sock, buffer);
+
+        FD_ZERO(&rdfs);
+        FD_SET(STDIN_FILENO, &rdfs);
+        FD_SET(sock, &rdfs);
+
+        tv.tv_sec = 0;
+        tv.tv_usec = 100000;
+
+        int ret = select(sock + 1, &rdfs, NULL, NULL, &tv);
+        if (ret == -1) {
+            perror("select()");
+            return;
+        }
+
+        if (FD_ISSET(STDIN_FILENO, &rdfs)) {
+            if (fgets(input, sizeof(input), stdin) != NULL) {
+                input[strcspn(input, "\n")] = '\0';
+                int bio_choice = atoi(input);
+
+                if (bio_choice == 1) {
+                    char bio[MAX_BIO_LENGTH] = "setbio:";
+                    printf("\033[1;34mEnter your bio:\033[0m\n");
+                    get_multiline_input(bio + 7, sizeof(bio) - 7);
+                    write_server(sock, bio);
+                    return;
+                }
+                else if (bio_choice == 2) {
+                    printf("\033[1;34mEnter nickname to view bio: \033[0m");
+                    if (fgets(input, sizeof(input), stdin) != NULL) {
+                        input[strcspn(input, "\n")] = '\0';
+                        char buffer[BUF_SIZE];
+                        snprintf(buffer, sizeof(buffer), "getbio:%s", input);
+                        write_server(sock, buffer);
+                        return;
+                    }
+                }
+                else {
+                    printf("\n");
+                    printf("\033[1;31mInvalid bio option selected.\033[0m\n");
+                    printf("\033[1;31mReturning to main menu...\033[0m\n");
+                    display_menu();
+                    return;
+                }
             }
         }
-        else
-        {   
+
+        if (FD_ISSET(sock, &rdfs)) {
+            char buffer[BUF_SIZE];
+            int n = read_server(sock, buffer);
+            if (n == 0) {
+                printf("\033[1;31mServer disconnected!\033[0m\n");
+                exit(errno);
+            }
             printf("\n");
-            printf("\033[1;31mInvalid bio option selected.\033[0m\n");
-            printf("\033[1;31mReturning to main menu...\033[0m\n");
-            display_menu(); 
-            return ;
+            handle_server_message(sock, buffer);
+            
+            if (!partie_en_cours) {  // Ne réaffiche le menu que si on n'est pas en partie
+                printf("\n\033[1;36m=== Bio Options ===\033[0m\n");
+                printf("1. Set your bio\n");
+                printf("2. View someone's bio\n");
+                printf("Others. Return to main menu\n");
+                printf("Choice: ");
+                fflush(stdout);
+            }
         }
     }
 }
+
 
 /**
  * @brief Handles the spec menu.
@@ -232,32 +313,76 @@ void handle_bio_options(SOCKET sock)
  */
 void handle_spec(SOCKET sock)
 {
-    char buffer[BUF_SIZE];
+    fd_set rdfs;
+    struct timeval tv;
     char input[BUF_SIZE];
+
     printf("\n\033[1;36m=== Spec Options ===\033[0m\n");
     printf("Tap 1. Join a game\n");
     printf("Or return to main menu (input != 1)\n");
     printf("Choice: ");
+    fflush(stdout);
 
-    if (fgets(input, sizeof(input), stdin) != NULL)
-    {
-        int bio_choice = atoi(input);
-        if (bio_choice == 1)
-        {
-            printf("\033[1;34mEnter the nickname of the player you want to spectate: \033[0m");
-            if (fgets(buffer, sizeof(buffer), stdin) != NULL)
-            {
-                buffer[strcspn(buffer, "\n")] = '\0'; // Remove newline
-                snprintf(input, sizeof(input), "spec:%s", buffer);
-                write_server(sock, input);
+    while (1) {
+        if (partie_en_cours) {
+            return;  // Sort directement si une partie a commencé
+        }
+
+        FD_ZERO(&rdfs);
+        FD_SET(STDIN_FILENO, &rdfs);
+        FD_SET(sock, &rdfs);
+
+        tv.tv_sec = 0;
+        tv.tv_usec = 100000;
+
+        int ret = select(sock + 1, &rdfs, NULL, NULL, &tv);
+        if (ret == -1) {
+            perror("select()");
+            return;
+        }
+
+        if (FD_ISSET(STDIN_FILENO, &rdfs)) {
+            if (fgets(input, sizeof(input), stdin) != NULL) {
+                input[strcspn(input, "\n")] = '\0';
+                int spec_choice = atoi(input);
+
+                if (spec_choice == 1) {
+                    printf("\033[1;34mEnter the nickname of the player you want to spectate: \033[0m");
+                    if (fgets(input, sizeof(input), stdin) != NULL) {
+                        input[strcspn(input, "\n")] = '\0';
+                        char buffer[BUF_SIZE];
+                        snprintf(buffer, sizeof(buffer), "spec:%s", input);
+                        write_server(sock, buffer);
+                        return;
+                    }
+                }
+                else {
+                    printf("\n");
+                    printf("\033[1;31mInvalid choice.\033[0m\n");
+                    printf("\033[1;31mReturning to main menu...\033[0m\n");
+                    display_menu();
+                    return;
+                }
             }
         }
-        else
-        {
+
+        if (FD_ISSET(sock, &rdfs)) {
+            char buffer[BUF_SIZE];
+            int n = read_server(sock, buffer);
+            if (n == 0) {
+                printf("\033[1;31mServer disconnected!\033[0m\n");
+                exit(errno);
+            }
             printf("\n");
-            printf("\033[1;31mInvalid bio option selected.\033[0m\n");
-            printf("\033[1;31mReturning to main menu...\033[0m\n");
-            display_menu(); 
+            handle_server_message(sock, buffer);
+            
+            if (!partie_en_cours) {
+                printf("\n\033[1;36m=== Spec Options ===\033[0m\n");
+                printf("Tap 1. Join a game\n");
+                printf("Or return to main menu (input != 1)\n");
+                printf("Choice: ");
+                fflush(stdout);
+            }
         }
     }
 }
@@ -318,6 +443,92 @@ void handle_list_games(SOCKET sock)
     char buffer[BUF_SIZE];
     strcpy(buffer, "awale_list:");
     write_server(sock, buffer);
+
+    // Attendre la réponse du serveur pour la liste des parties
+    if (read_server(sock, buffer) == -1) {
+        return;
+    }
+
+    // Si aucune partie en cours, retourner directement
+    if (strstr(buffer, "0 game") != NULL) {
+        printf("\033[1;32m%s\033[0m", buffer);
+        display_menu();
+        return;
+    }
+
+    printf("\033[1;32m%s\033[0m", buffer);
+    printf("\n\033[1;36m=== Games Options ===\033[0m\n");
+    printf("1. Spectate a game\n");
+    printf("Others. Return to main menu\n");
+    printf("Choice: ");
+    fflush(stdout);
+
+    fd_set rdfs;
+    struct timeval tv;
+    char input[BUF_SIZE];
+
+    while (1) {
+        if (partie_en_cours) {
+            return;  // Sort directement si une partie a commencé
+        }
+
+        FD_ZERO(&rdfs);
+        FD_SET(STDIN_FILENO, &rdfs);
+        FD_SET(sock, &rdfs);
+
+        tv.tv_sec = 0;
+        tv.tv_usec = 100000;
+
+        int ret = select(sock + 1, &rdfs, NULL, NULL, &tv);
+        if (ret == -1) {
+            perror("select()");
+            return;
+        }
+
+        if (FD_ISSET(STDIN_FILENO, &rdfs)) {
+            if (fgets(input, sizeof(input), stdin) != NULL) {
+                input[strcspn(input, "\n")] = '\0';
+                int choice = atoi(input);
+
+                if (choice == 1) {
+                    printf("\033[1;34mEnter the nickname of the player you want to spectate: \033[0m");
+                    if (fgets(input, sizeof(input), stdin) != NULL) {
+                        input[strcspn(input, "\n")] = '\0';
+                        char buffer[BUF_SIZE];
+                        snprintf(buffer, sizeof(buffer), "spec:%s", input);
+                        write_server(sock, buffer);
+                        return;
+                    }
+                }
+                else {
+                    printf("\n");
+                    printf("\033[1;31mReturning to main menu...\033[0m\n");
+                    display_menu();
+                    return;
+                }
+            }
+        }
+
+        if (FD_ISSET(sock, &rdfs)) {
+            char buffer[BUF_SIZE];
+            int n = read_server(sock, buffer);
+            if (n == 0) {
+                printf("\033[1;31mServer disconnected!\033[0m\n");
+                exit(errno);
+            }
+            printf("\n");
+            handle_server_message(sock, buffer);
+            
+            if (!partie_en_cours) {
+                printf("\033[1;32m%s\033[0m", buffer);
+                printf("\n\033[1;36m=== Games Options ===\033[0m\n");
+                printf("1. Spectate a game\n");
+                printf("Others. Return to main menu\n");
+                printf("Choice: ");
+                fflush(stdout);
+            }
+        }
+    }
 }
 
 /**
@@ -475,55 +686,49 @@ void prompt_for_move(SOCKET sock, int joueur, const char *nom, int plateau[], in
     struct timeval tv;
     char input[BUF_SIZE];
 
-    while (1)
-    {
+    while (partie_en_cours) {  // Changé while(1) en while(partie_en_cours)
         FD_ZERO(&rdfs);
         FD_SET(STDIN_FILENO, &rdfs);
         FD_SET(sock, &rdfs);
 
-        // Reset timeval structure since select modifies it
         tv.tv_sec = 0;
-        tv.tv_usec = 100000; // 100ms timeout
+        tv.tv_usec = 100000;
 
         int ret = select(sock + 1, &rdfs, NULL, NULL, &tv);
-        if (ret == -1)
-        {
+        if (ret == -1) {
             perror("select()");
             break;
         }
 
-        if (FD_ISSET(STDIN_FILENO, &rdfs))
-        {
-            if (fgets(input, sizeof(input), stdin) != NULL)
-            {
+        if (FD_ISSET(STDIN_FILENO, &rdfs)) {
+            if (fgets(input, sizeof(input), stdin) != NULL) {
                 input[strcspn(input, "\n")] = '\0';
 
-                if (strcmp(input, "quit") == 0)
-                {
+                if (!partie_en_cours) {  // Vérifier si la partie est toujours en cours avant de traiter l'input
+                    return;
+                }
+
+                if (strcmp(input, "quit") == 0) {
                     handle_quit_game(sock);
                     return;
                 }
 
-                if (strncmp(input, "mp:", 3) == 0)
-                {
+                if (strncmp(input, "mp:", 3) == 0) {
                     char *rest = input + 3;
                     char *pseudo = strchr(rest, ':');
                     
-                    if (!pseudo)
-                    {
+                    if (!pseudo) {
                         printf("\033[1;31mInvalid format! Use 'mp:pseudo:message'\033[0m\n");
                         continue;
                     }
 
                     int pseudo_len = pseudo - rest;
-                    if (pseudo_len < PSEUDO_MIN_LENGTH || pseudo_len >= PSEUDO_MAX_LENGTH)
-                    {
+                    if (pseudo_len < PSEUDO_MIN_LENGTH || pseudo_len >= PSEUDO_MAX_LENGTH) {
                         printf("\033[1;31mInvalid nickname length\033[0m\n");
                         continue;
                     }
 
-                    if (strlen(pseudo + 1) == 0)
-                    {
+                    if (strlen(pseudo + 1) == 0) {
                         printf("\033[1;31mMessage cannot be empty\033[0m\n");
                         continue;
                     }
@@ -535,32 +740,33 @@ void prompt_for_move(SOCKET sock, int joueur, const char *nom, int plateau[], in
                 }
 
                 int move_int = atoi(input);
-                if (move_int >= first && move_int <= last)
-                {
+                if (move_int >= first && move_int <= last) {
                     char buffer[BUF_SIZE];
                     snprintf(buffer, sizeof(buffer), "awale_move:%d", move_int);
                     write_server(sock, buffer);
                     return;
                 }
-                else
-                {
+                else {
                     printf("\033[1;31mInvalid input!\033[0m\n");
                 }
             }
         }
 
-        if (FD_ISSET(sock, &rdfs))
-        {
+        if (FD_ISSET(sock, &rdfs)) {
             char buffer[BUF_SIZE];
             int n = read_server(sock, buffer);
-            if (n == 0)
-            {
+            if (n == 0) {
                 printf("\033[1;31mServer disconnected!\033[0m\n");
                 exit(errno);
             }
             handle_server_message(sock, buffer);
-            printf("\nEnter a number between %d and %d to play: ", first, last);
-            fflush(stdout);
+            
+            if (partie_en_cours) {  // Ne réaffiche le prompt que si on est toujours en partie
+                printf("\nEnter a number between %d and %d to play: ", first, last);
+                fflush(stdout);
+            } else {
+                return;  // Sort de la fonction si la partie est terminée
+            }
         }
     }
 }

@@ -10,7 +10,8 @@ warning : listen socket is like a FIFO for the connection and pseudo is unique
 # TODO
 - gérer les mutex
 - faire le readme/manuel user
+- liste d'amis ou de gens bloqué
 
 Pendant la séance :
-- tester
+- revoir affichage (certains \n sont pas là du genre quand on ctrl c, etc)
 - remmettre à 24 le score pour le jeu awale
