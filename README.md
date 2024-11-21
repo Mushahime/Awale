@@ -74,6 +74,7 @@ This script will clean all ports (If that doesn't work, we recommend running the
 Developed by:
 - Noam CATHERINE
 - Abderramane BOUZIANE
+(Project as part on courses in network programming)
 
 # TODO
 Demain :
@@ -81,3 +82,6 @@ Demain :
 - demo preparation
 - remmettre à 24 le score pour le jeu awale
 - update code
+- deconnection friendlist ??
+- action unitaire bloquante
+- autres pb

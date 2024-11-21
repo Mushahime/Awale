@@ -70,6 +70,7 @@ extern bool partie_en_cours;
 extern char save[MAX_PARTIES][BUF_SAVE_SIZE+BUF_SIZE];
 extern int save_count;
 extern int save_index;
+extern bool waiting_for_response;
 
 // Function Prototypes
 void get_multiline_input(char *buffer, int max_size);
