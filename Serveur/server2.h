@@ -15,7 +15,6 @@
 #include <pthread.h>
 #include "utilsServer.h"
 #include "../awale.h"
-#include "utilsServer.h"
 #include "commands.h"
 #define INVALID_SOCKET -1
 #define SOCKET_ERROR -1

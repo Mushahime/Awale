@@ -32,6 +32,8 @@
 #define MAX_PARTIES 25
 #define BUF_SAVE_SIZE 3000
 #define MUTEX_TIMEOUT_SEC 10
+#define RESERVED_WORDS_COUNT 18
+#define _GNU_SOURCE  // For strcasestr
 
 // Typedefs
 typedef int SOCKET;
@@ -51,6 +53,7 @@ typedef struct {
     time_t challenge_time; // time of the challenge
 } AwaleChallenge;
 
+
 // Structure to store client data
 typedef struct {
     SOCKET sock;
@@ -63,7 +66,11 @@ typedef struct {
     int nbBlock; // number of blocked users
     char friend[MAX_CLIENTS][PSEUDO_MAX_LENGTH]; // list of friends
     int nbFriend; // number of friends
+    
+    bool has_pending_request;  // true if this client has a pending request
+    char pending_from[PSEUDO_MAX_LENGTH];  // who sent the pending request
 } Client;
+
 
 
 // Structure to store a game
@@ -90,6 +97,13 @@ extern int challenge_count;
 extern PartieAwale awale_parties[MAX_PARTIES];
 extern int partie_count; 
 
+static const char *RESERVED_WORDS[] = {
+    "Private", "Public", "Challenge", "AWALE", "ERROR", "FAIL",
+    "fight", "Spectator", "over", "expired", "spectating",
+    "Friend", "declined", "score", "list", "save", "quit",
+    "connected"
+};
+
 // function declarations
 void init(void);
 void end(void);
@@ -110,5 +124,6 @@ int find_challenge(const char *name);
 void add_challenge(const char *challenger, const char *challenged, const char *message_rest);
 void remove_challenge(int index);
 void check_challenge_timeouts(Client *clients, int actual);
+bool is_blocked_by(Client *clients, int actual, const char *sender, const char *recipient);
 
 #endif /* UTILS_H */

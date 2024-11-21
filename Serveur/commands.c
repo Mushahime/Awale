@@ -245,43 +245,35 @@ void handle_awale_challenge(Client *clients, int actual, int client_index, char 
 {
     printf("Partie count : %d\n", partie_count);
     printf("Challenge count : %d\n", challenge_count);
-    // Check if the player already has a pending challenge
-    if (find_challenge(clients[client_index].name) != -1)
-    {
-        char response[BUF_SIZE];
-        snprintf(response, BUF_SIZE, "You already have a pending challenge.\n");
-        sleep(0.5); // to avoid mix of messages
-        write_client(clients[client_index].sock, response);
+    
+    if (find_challenge(clients[client_index].name) != -1) {
+        write_client(clients[client_index].sock, "You already have a pending challenge.\n");
         return;
     }
 
     char * target_pseudo = strtok(buffer, ":");
     char * message_rest = strtok(NULL, "");
 
-    if (target_pseudo == NULL || message_rest == NULL)
-    {
-        char response[BUF_SIZE];
-        snprintf(response, BUF_SIZE, "Invalid challenge format.\n");
-        write_client(clients[client_index].sock, response);
+    if (target_pseudo == NULL || message_rest == NULL) {
+        write_client(clients[client_index].sock, "Invalid challenge format.\n");
         return;
     }
 
-    // Find the target player
     int found = 0;
-    for (int i = 0; i < actual; i++)
-    {
-        if (strcmp(clients[i].name, target_pseudo) == 0)
-        {
-            // Check if the target player already has a pending challenge
-            if (find_challenge(target_pseudo) != -1)
-            {
+    for (int i = 0; i < actual; i++) {
+        if (strcmp(clients[i].name, target_pseudo) == 0) {
+            if (is_blocked_by(clients, actual, clients[client_index].name, target_pseudo)) {
+                write_client(clients[client_index].sock, "Cannot send challenge - you are blocked by this user.\n");
+                return;
+            }
+
+            if (find_challenge(target_pseudo) != -1) {
                 char response[BUF_SIZE];
                 snprintf(response, BUF_SIZE, "Player %s is already in a challenge.\n", target_pseudo);
                 write_client(clients[client_index].sock, response);
                 return;
             }
 
-            // Add the challenge and send the request
             add_challenge(clients[client_index].name, target_pseudo, message_rest);
             printf("after add challenge value of challenge count : %d\n", challenge_count);
             char challenge_msg[BUF_SIZE];
@@ -293,8 +285,7 @@ void handle_awale_challenge(Client *clients, int actual, int client_index, char 
         }
     }
 
-    if (!found)
-    {
+    if (!found) {
         char response[BUF_SIZE];
         snprintf(response, BUF_SIZE, "User %s not found.\n", target_pseudo);
         write_client(clients[client_index].sock, response);
@@ -551,9 +542,6 @@ void handle_private_message(Client *clients, int actual, int sender_index, const
     char message[BUF_SIZE];
     const char *msg_start = strchr(buffer + 3, ':');
 
-    printf("buffer: %s\n", buffer);
-    printf("msg_start: %s\n", msg_start);
-
     if (msg_start == NULL)
         return;
 
@@ -561,22 +549,20 @@ void handle_private_message(Client *clients, int actual, int sender_index, const
     strncpy(target_pseudo, buffer + 3, pseudo_len);
     target_pseudo[pseudo_len] = '\0';
 
-    printf("target_pseudo: %s\n", target_pseudo);
-
     strncpy(message, msg_start + 1, BUF_SIZE - 1);
 
-    for (int i = 0; i < actual; i++)
-    {
-        if (strcmp(clients[i].name, target_pseudo) == 0)
-        {
-            char formatted_msg[BUF_SIZE];
-            snprintf(formatted_msg, BUF_SIZE, "[Private from %s]: %s\n\n",
-                     clients[sender_index].name, message);
-            write_client(clients[i].sock, formatted_msg);
+    for (int i = 0; i < actual; i++) {
+        if (strcmp(clients[i].name, target_pseudo) == 0) {
+            if (!is_blocked_by(clients, actual, clients[sender_index].name, target_pseudo)) {
+                char formatted_msg[BUF_SIZE];
+                snprintf(formatted_msg, BUF_SIZE, "[Private from %s]: %s\n\n",
+                         clients[sender_index].name, message);
+                write_client(clients[i].sock, formatted_msg);
 
-            snprintf(formatted_msg, BUF_SIZE, "[Private to %s]: %s\n\n",
-                     target_pseudo, message);
-            write_client(clients[sender_index].sock, formatted_msg);
+                snprintf(formatted_msg, BUF_SIZE, "[Private to %s]: %s\n\n",
+                         target_pseudo, message);
+                write_client(clients[sender_index].sock, formatted_msg);
+            }
             return;
         }
     }
@@ -800,6 +786,7 @@ void handle_unblock(Client *clients, int actual, int client_index, const char *b
     write_client(clients[client_index].sock, "Player not found in blocked list.\n");
 }
 
+// Function to list friends
 void handle_list_friend(Client *clients, int actual, int client_index)
 {
     char list[BUF_SIZE * MAX_CLIENTS] = "Friends:\n";
@@ -819,12 +806,156 @@ void handle_list_friend(Client *clients, int actual, int client_index)
     write_client(clients[client_index].sock, list);
 }
 
-void handle_friend(Client *clients, int actual, int client_index, const char *buffer)
-{
-    return;
-}
 
+// Function to handle a friend request response
 void handle_unfriend(Client *clients, int actual, int client_index, const char *buffer)
 {
-    return;
+    char target_pseudo[BUF_SIZE];
+    strncpy(target_pseudo, buffer, BUF_SIZE - 1);
+    target_pseudo[BUF_SIZE - 1] = '\0';
+
+    // delete the first character (error in sending)
+    memmove(target_pseudo, target_pseudo + 1, strlen(target_pseudo));
+    bool is_friend = false;
+    char response[BUF_SIZE];
+    // for each friend of the client, check if the target is in the list
+    for (int i = 0; i < clients[client_index].nbFriend; i++)
+    {
+        if (strcmp(clients[client_index].friend[i], target_pseudo) == 0)
+        {
+            memmove(&clients[client_index].friend[i], &clients[client_index].friend[i + 1],
+                    (clients[client_index].nbFriend - i - 1) * PSEUDO_MAX_LENGTH);
+            clients[client_index].nbFriend--;
+            snprintf(response, BUF_SIZE, "Player %s removed from friends successfully.\n", target_pseudo);
+            write_client(clients[client_index].sock, response);
+            is_friend = true;
+        }
+    }
+
+    if (is_friend)
+    {
+        // Remove the client from the friend list of the target
+        for (int i = 0; i < actual; i++)
+        {
+            if (strcmp(clients[i].name, target_pseudo) == 0)
+            {
+                for (int j = 0; j < clients[i].nbFriend; j++)
+                {
+                    if (strcmp(clients[i].friend[j], clients[client_index].name) == 0)
+                    {
+                        memmove(&clients[i].friend[j], &clients[i].friend[j + 1],
+                                (clients[i].nbFriend - j - 1) * PSEUDO_MAX_LENGTH);
+                        clients[i].nbFriend--;
+                        snprintf(response, BUF_SIZE, "Player %s removed from friends successfully.\n", clients[client_index].name);
+                        write_client(clients[i].sock, response);
+                    }
+                }
+            }
+        }
+    }
+
+    if (!is_friend){
+        write_client(clients[client_index].sock, "Player not found in friends list.\n");
+    }
+}
+
+// Function de add a friend
+void handle_friend(Client *clients, int actual, int client_index, const char *buffer) {
+    char target_pseudo[BUF_SIZE];
+    strncpy(target_pseudo, buffer + 1, BUF_SIZE - 1);
+    target_pseudo[BUF_SIZE - 1] = '\0';
+
+    if (strcmp(clients[client_index].name, target_pseudo) == 0) {
+        write_client(clients[client_index].sock, "You cannot add yourself as a friend.\n");
+        return;
+    }
+
+    if (clients[client_index].has_pending_request) {
+        write_client(clients[client_index].sock, "You have a pending friend request. Please respond to it first.\n");
+        return;
+    }
+
+    for (int j = 0; j < clients[client_index].nbFriend; j++) {
+        if (strcmp(clients[client_index].friend[j], target_pseudo) == 0) {
+            write_client(clients[client_index].sock, "This player is already your friend.\n");
+            return;
+        }
+    }
+
+    for (int i = 0; i < actual; i++) {
+        if (strcmp(clients[i].name, target_pseudo) == 0) {
+            if (is_blocked_by(clients, actual, clients[client_index].name, target_pseudo)) {
+                write_client(clients[client_index].sock, "Cannot send friend request - you are blocked by this user.\n");
+                return;
+            }
+
+            if (clients[i].has_pending_request) {
+                write_client(clients[client_index].sock, "This player already has a pending friend request.\n");
+                return;
+            }
+
+            clients[i].has_pending_request = true;
+            strncpy(clients[i].pending_from, clients[client_index].name, PSEUDO_MAX_LENGTH - 1);
+            clients[i].pending_from[PSEUDO_MAX_LENGTH - 1] = '\0';
+
+            char request_msg[BUF_SIZE];
+            snprintf(request_msg, BUF_SIZE, "[Friend] Friend request from :%s\n", clients[client_index].name);
+            write_client(clients[i].sock, request_msg);
+
+            snprintf(request_msg, BUF_SIZE, "Friend request sent to %s.\n", target_pseudo);
+            write_client(clients[client_index].sock, request_msg);
+            return;
+        }
+    }
+
+    write_client(clients[client_index].sock, "User not found.\n");
+}
+
+// Function to handle a friend request response
+void handle_friend_response(Client *clients, int actual, int client_index, const char *response) {
+    if (!clients[client_index].has_pending_request) {
+        write_client(clients[client_index].sock, "You have no pending friend requests.\n");
+        return;
+    }
+
+    char *bool_response = strtok((char *)response, ":");
+    if (!bool_response) {
+        write_client(clients[client_index].sock, "Invalid response format.\n");
+        return;
+    }
+
+    // Find requesting client
+    int asker_index = -1;
+    for (int i = 0; i < actual; i++) {
+        if (strcmp(clients[i].name, clients[client_index].pending_from) == 0) {
+            asker_index = i;
+            break;
+        }
+    }
+
+    if (asker_index == -1) {
+        write_client(clients[client_index].sock, "Requesting user not found.\n");
+        clients[client_index].has_pending_request = false;
+        return;
+    }
+
+    if (strcmp(bool_response, "yes") == 0) {
+        // Add each other as friends
+        strncpy(clients[asker_index].friend[clients[asker_index].nbFriend], 
+                clients[client_index].name, PSEUDO_MAX_LENGTH - 1);
+        clients[asker_index].nbFriend++;
+
+        strncpy(clients[client_index].friend[clients[client_index].nbFriend], 
+                clients[asker_index].name, PSEUDO_MAX_LENGTH - 1);
+        clients[client_index].nbFriend++;
+
+        write_client(clients[asker_index].sock, "Friend added successfully.\n");
+        write_client(clients[client_index].sock, "Friend added successfully.\n");
+    } else {
+        write_client(clients[asker_index].sock, "Friend request declined.\n");
+        write_client(clients[client_index].sock, "Friend request declined.\n");
+    }
+
+    // Clear pending request
+    clients[client_index].has_pending_request = false;
 }

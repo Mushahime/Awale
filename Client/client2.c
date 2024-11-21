@@ -190,6 +190,12 @@ void handle_server_message(SOCKET sock, char *buffer)
         
         printf("\n");
     }
+    // for friends list
+    else if (strstr(buffer, "[Friend]") != NULL)
+    {
+        printf("\n");
+        process_friend_message(sock, buffer);
+    }
     // for spectator when the game is over
     else if (strstr(buffer, "[Spectator") != NULL)
     {

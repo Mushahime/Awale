@@ -216,7 +216,7 @@ void send_message_to_all_clients(Client *clients, Client sender, int actual, con
     for (i = 0; i < actual; i++)
     {
         /* we don't send message to the sender */
-        if (sender.sock != clients[i].sock)
+        if (sender.sock != clients[i].sock && !is_blocked_by(clients, actual, sender.name, clients[i].name))
         {
             message[0] = 0; // Reset message buffer for each client
 
@@ -404,10 +404,15 @@ int check_pseudo(Client *clients, int actual, const char *pseudo)
     }
 
     // character check
-    for (size_t i = 0; i < len; i++)
-    {
-        if (!isalnum(pseudo[i]) && pseudo[i] != '_')
-        {
+    for (size_t i = 0; i < len; i++) {
+        if (!isalnum(pseudo[i]) && (pseudo[i] != '_' || pseudo[i] == ',' || pseudo[i] == ':')) {
+            return 0;
+        }
+    }
+
+    // Check for reserved words
+    for (int i = 0; i < RESERVED_WORDS_COUNT; i++) {
+        if (strstr(pseudo, RESERVED_WORDS[i]) != NULL) {
             return 0;
         }
     }
@@ -466,6 +471,21 @@ void check_challenge_timeouts(Client *clients, int actual) {
             remove_challenge(i);
         }
     }
+}
+
+// function to check if a pseudo is blocked
+bool is_blocked_by(Client *clients, int actual, const char *sender, const char *recipient) {
+    for (int i = 0; i < actual; i++) {
+        if (strcmp(clients[i].name, recipient) == 0) {
+            for (int j = 0; j < clients[i].nbBlock; j++) {
+                if (strcmp(clients[i].block[j], sender) == 0) {
+                    return true;
+                }
+            }
+            break;
+        }
+    }
+    return false;
 }
 
 
