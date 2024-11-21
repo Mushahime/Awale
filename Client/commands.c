@@ -582,6 +582,7 @@ void handle_spec(SOCKET sock)
     }
 }
 
+// active listening for each fgets (that is why imbricated structure of code)
 /**
  * @brief Handles initiating a game of Awale.
  *
@@ -589,69 +590,167 @@ void handle_spec(SOCKET sock)
  */
 void handle_play_awale(SOCKET sock)
 {
+    fd_set rdfs;
+    struct timeval tv;
     char buffer[BUF_SIZE];
     char input[BUF_SIZE];
     char private_game[BUF_SIZE];
     char private_player[BUF_SIZE];
+    waiting_for_response = true;
+
 
     printf("\033[1;34mEnter the nickname of the player you want to play against: \033[0m");
-    if (fgets(buffer, sizeof(buffer), stdin) != NULL)
-    {
-        buffer[strcspn(buffer, "\n")] = '\0'; // Remove newline
+    fflush(stdout);
 
-        printf("\033[1;34mDo you want to private the game? (yes/no)\033[0m\n");
+    while (1) {
+        if (partie_en_cours) {
+            return;
+        }
 
-        if (fgets(private_game, sizeof(private_game), stdin) != NULL)
-        {
-            private_game[strcspn(private_game, "\n")] = '\0'; 
+        FD_ZERO(&rdfs);
+        FD_SET(STDIN_FILENO, &rdfs);
+        FD_SET(sock, &rdfs);
 
-            if (strcmp(private_game, "yes") == 0)
-            {
-                printf("\033[1;34mEnter the list of players who can spectate the game (: separated), or press Enter to use your friend list\033[0m\n");
-                if (fgets(private_player, sizeof(private_player), stdin) != NULL)
-                {
-                    private_player[strcspn(private_player, "\n")] = '\0';
-                    
-                    // If empty input, request friend list from server
-                    if (strlen(private_player) == 0) {
-                        // First get the friend list
-                        write_server(sock, "list_friend:");
-                        
-                        // Read server response
-                        char friend_list[BUF_SIZE];
-                        if (read_server(sock, friend_list) != -1) {
-                            // Parse friend list response and extract names
-                            // Format: "Friends:\n- friend1\n- friend2\n..."
-                            char *line = strtok(friend_list, "\n");
-                            char friends[BUF_SIZE] = "";
-                            
-                            while ((line = strtok(NULL, "\n")) != NULL) {
-                                if (line[0] == '-') {
-                                    // Skip the "- " prefix
-                                    strcat(friends, line + 2);
-                                    strcat(friends, ":");
+        tv.tv_sec = 0;
+        tv.tv_usec = 100000;
+
+        int ret = select(sock + 1, &rdfs, NULL, NULL, &tv);
+        if (ret == -1) {
+            perror("select()");
+            return;
+        }
+
+        if (FD_ISSET(STDIN_FILENO, &rdfs)) {
+            if (fgets(buffer, sizeof(buffer), stdin) != NULL) {
+                buffer[strcspn(buffer, "\n")] = '\0';
+
+                // Now ask about private game
+                printf("\033[1;34mDo you want to private the game? (yes/no)\033[0m\n");
+                fflush(stdout);
+
+                while (1) {
+                    FD_ZERO(&rdfs);
+                    FD_SET(STDIN_FILENO, &rdfs);
+                    FD_SET(sock, &rdfs);
+
+                    tv.tv_sec = 0;
+                    tv.tv_usec = 100000;
+
+                    ret = select(sock + 1, &rdfs, NULL, NULL, &tv);
+                    if (ret == -1) {
+                        perror("select()");
+                        return;
+                    }
+
+                    if (FD_ISSET(STDIN_FILENO, &rdfs)) {
+                        if (fgets(private_game, sizeof(private_game), stdin) != NULL) {
+                            private_game[strcspn(private_game, "\n")] = '\0';
+
+                            if (strcmp(private_game, "yes") == 0) {
+                                printf("\033[1;34mEnter the list of players who can spectate the game (: separated), or press Enter to use your friend list\033[0m\n");
+                                fflush(stdout);
+
+                                while (1) {
+                                    FD_ZERO(&rdfs);
+                                    FD_SET(STDIN_FILENO, &rdfs);
+                                    FD_SET(sock, &rdfs);
+
+                                    tv.tv_sec = 0;
+                                    tv.tv_usec = 100000;
+
+                                    ret = select(sock + 1, &rdfs, NULL, NULL, &tv);
+                                    if (ret == -1) {
+                                        perror("select()");
+                                        return;
+                                    }
+
+                                    if (FD_ISSET(STDIN_FILENO, &rdfs)) {
+                                        if (fgets(private_player, sizeof(private_player), stdin) != NULL) {
+                                            private_player[strcspn(private_player, "\n")] = '\0';
+
+                                            // If empty input, request friend list from server
+                                            if (strlen(private_player) == 0) {
+                                                write_server(sock, "list_friend:");
+                                                
+                                                // Read server response
+                                                char friend_list[BUF_SIZE];
+                                                if (read_server(sock, friend_list) != -1) {
+                                                    // Parse friend list response and extract names
+                                                    char *line = strtok(friend_list, "\n");
+                                                    char friends[BUF_SIZE] = "";
+                                                    
+                                                    while ((line = strtok(NULL, "\n")) != NULL) {
+                                                        if (line[0] == '-') {
+                                                            // Skip the "- " prefix
+                                                            strcat(friends, line + 2);
+                                                            strcat(friends, ":");
+                                                        }
+                                                    }
+                                                    
+                                                    // Remove trailing colon if exists
+                                                    size_t len = strlen(friends);
+                                                    if (len > 0 && friends[len-1] == ':') {
+                                                        friends[len-1] = '\0';
+                                                    }
+                                                    
+                                                    snprintf(input, sizeof(input), "awale:%s:%s:%s:", buffer, private_game, friends);
+                                                }
+                                            } else {
+                                                snprintf(input, sizeof(input), "awale:%s:%s:%s:", buffer, private_game, private_player);
+                                            }
+                                            write_server(sock, input);
+                                            printf("Waiting for the other player to accept...\n");
+                                            return;
+                                        }
+                                    }
+
+                                    if (FD_ISSET(sock, &rdfs)) {
+                                        char server_buffer[BUF_SIZE];
+                                        int n = read_server(sock, server_buffer);
+                                        if (n == 0) {
+                                            printf("\n\033[1;31mServer disconnected!\033[0m\n");
+                                            exit(errno);
+                                        }
+                                        handle_server_message(sock, server_buffer);
+                                        printf("\033[1;34mEnter the list of players who can spectate the game (: separated), or press Enter to use your friend list\033[0m\n");
+                                        fflush(stdout);
+                                    }
                                 }
+                            } else {
+                                snprintf(input, sizeof(input), "awale:%s:%s", buffer, private_game);
+                                write_server(sock, input);
+                                printf("Waiting for the other player to accept...\n");
+                                waiting_for_response = true;
+                                return;
                             }
-                            
-                            // Remove trailing colon if exists
-                            size_t len = strlen(friends);
-                            if (len > 0 && friends[len-1] == ':') {
-                                friends[len-1] = '\0';
-                            }
-                            
-                            snprintf(input, sizeof(input), "awale:%s:%s:%s:", buffer, private_game, friends);
                         }
-                    } else {
-                        snprintf(input, sizeof(input), "awale:%s:%s:%s:", buffer, private_game, private_player);
+                    }
+
+                    if (FD_ISSET(sock, &rdfs)) {
+                        char server_buffer[BUF_SIZE];
+                        int n = read_server(sock, server_buffer);
+                        if (n == 0) {
+                            printf("\n\033[1;31mServer disconnected!\033[0m\n");
+                            exit(errno);
+                        }
+                        handle_server_message(sock, server_buffer);
+                        printf("\033[1;34mDo you want to private the game? (yes/no)\033[0m\n");
+                        fflush(stdout);
                     }
                 }
             }
-            else
-            {
-                snprintf(input, sizeof(input), "awale:%s:%s", buffer, private_game);
+        }
+
+        if (FD_ISSET(sock, &rdfs)) {
+            char server_buffer[BUF_SIZE];
+            int n = read_server(sock, server_buffer);
+            if (n == 0) {
+                printf("\n\033[1;31mServer disconnected!\033[0m\n");
+                exit(errno);
             }
-            write_server(sock, input);
-            printf("Waiting for the other player to accept...\n");
+            handle_server_message(sock, server_buffer);
+            printf("\033[1;34mEnter the nickname of the player you want to play against: \033[0m");
+            fflush(stdout);
         }
     }
 }
@@ -990,7 +1089,8 @@ void prompt_for_move(SOCKET sock, int joueur, const char *nom, int plateau[], in
                 printf("Enter a number between %d and %d to play\n", first, last);
                 printf("Type 'mp:pseudo:message' to send a private message\n");
                 printf("Type 'quit' to leave the game\n");
-            } else {
+            } 
+            else {
                 return; 
             }
         }

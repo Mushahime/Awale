@@ -1,5 +1,6 @@
 #include "client2.h"
 #include "commands.h"
+#include <ctype.h>
 #include "../awale.h"
 
 // Global
@@ -8,15 +9,35 @@ char save[MAX_PARTIES][BUF_SAVE_SIZE+BUF_SIZE];
 int save_count = 0;
 int save_index = 0;
 bool partie_en_cours = false;
+bool waiting_for_response = false;
 
 // Main function
 int main(int argc, char **argv)
 {
-    if (argc > 3 || argc < 3 || atoi(argv[2]) < 1024 || atoi(argv[2]) > 65535)
+    if (argc != 4 || atoi(argv[2]) < 1024 || atoi(argv[2]) > 65535)
     {
-        printf("Error: arguments error\n");
+        printf("Error: Usage: %s <address> <port> <pseudo>\n", argv[0]);
+        printf("Port must be between 1024 and 65535\n");
         return EXIT_FAILURE;
     }
+
+    if (strlen(argv[3]) < PSEUDO_MIN_LENGTH || strlen(argv[3]) >= PSEUDO_MAX_LENGTH)
+    {
+        printf("Error: Pseudo must be between %d and %d characters\n", 
+               PSEUDO_MIN_LENGTH, PSEUDO_MAX_LENGTH - 1);
+        return EXIT_FAILURE;
+    }
+
+    for (size_t i = 0; i < strlen(argv[3]); i++) {
+        if (!isalnum(argv[3][i]) && argv[3][i] != '_') {
+            printf("Error: Pseudo must contain only letters, numbers and underscore\n");
+            return EXIT_FAILURE;
+        }
+    }
+
+    strncpy(pseudo, argv[3], PSEUDO_MAX_LENGTH - 1);
+    pseudo[PSEUDO_MAX_LENGTH - 1] = '\0';
+
     init();
     app(argv[1], atoi(argv[2]));
     end();
@@ -158,6 +179,7 @@ void handle_server_message(SOCKET sock, char *buffer)
     // for awale move 
     else if (strncmp(buffer, "AWALE:", 6) == 0)
     {
+        waiting_for_response = false;
         process_awale_message(sock, buffer + 6);
     }
     // for error message during the game
@@ -233,16 +255,24 @@ void handle_server_message(SOCKET sock, char *buffer)
     // rest
     else
     {
+        if (strstr(buffer, "not found") != NULL)
+        {
+            waiting_for_response = false;
+        }
         printf("\n");
         printf("\033[1;32m%s\033[0m", buffer);
         should_display_menu = !partie_en_cours;
     }
 
-    if (should_display_menu)
+    if (should_display_menu && !waiting_for_response)
     {
         display_menu();
         fflush(stdout);
     }
+    /*if (waiting_for_response)
+    {
+        //printf("\033[1;31mYou are waiting for a response. Please wait.\033[0m\n");
+    }*/
 }
 
 /**
@@ -274,10 +304,16 @@ void handle_user_input(SOCKET sock)
             input[strcspn(input, "\n")] = '\0';
             write_server(sock, input);
         }
-        else if (strncmp(input, "\n", 1) != 0) // Ignore les lignes vides
+        else if (strncmp(input, "\n", 1) != 0) 
         {
             printf("During a game, you can only send private messages using 'mp:pseudo:message' or 'quit'\n");
         }
+        return;
+    }
+
+    if (waiting_for_response)
+    {
+        //printf("\033[1;31mYou are waiting for a response. Please wait.\033[0m\n");
         return;
     }
     choice = atoi(input);
@@ -406,14 +442,23 @@ void app(const char *address, int port)
     char buffer[BUF_SIZE];
     fd_set rdfs;
 
-    if (!get_valid_pseudo(sock))
+    write_server(sock, pseudo);
+    
+    // wait for the server response
+    if (read_server(sock, buffer) == -1 || strcmp(buffer, "connected") != 0)
     {
-        printf("\033[1;31mError getting valid nickname\033[0m\n");
+        if (strcmp(buffer, "pseudo_exists") == 0) {
+            printf("\033[1;31mThis nickname is already taken.\033[0m\n");
+        } else {
+            printf("\033[1;31mConnection failed. Invalid nickname or server error.\033[0m\n");
+        }
+        close(sock);
         exit(EXIT_FAILURE);
     }
 
+    printf("\033[1;32mConnected successfully!\033[0m\n");
     clear_screen_custom2();
-    display_menu(); 
+    display_menu();
 
     while (1)
     {
@@ -421,19 +466,19 @@ void app(const char *address, int port)
         FD_SET(STDIN_FILENO, &rdfs);
         FD_SET(sock, &rdfs);
 
-        // If there is input to read
+        // if there is an input from the user or the server
         if (select(sock + 1, &rdfs, NULL, NULL, NULL) == -1)
         {
             perror("select()");
             exit(errno);
         }
 
-        // If there is input from the user
+        // if there is an input from the user
         if (FD_ISSET(STDIN_FILENO, &rdfs))
         {
             handle_user_input(sock);
         }
-        // If there is input from the server
+        // if there is an input from the server
         else if (FD_ISSET(sock, &rdfs))
         {
             int n = read_server(sock, buffer);
