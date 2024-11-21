@@ -30,13 +30,21 @@ void app(int port)
         {
             FD_SET(clients[i].sock, &rdfs);
         }
+
+        //for challenge timeout
+        struct timeval timeout;
+        timeout.tv_sec = 1;  // Check every second
+        timeout.tv_usec = 0;
         
         // Management (read/write) of the sockets
-        if (select(max + 1, &rdfs, NULL, NULL, NULL) == -1)
+        if (select(max + 1, &rdfs, NULL, NULL, &timeout) == -1)
         {
             perror("select()");
             exit(errno);
         }
+
+        // chalenge timeout
+        check_challenge_timeouts(clients, actual);
 
         if (FD_ISSET(STDIN_FILENO, &rdfs))
         {
@@ -103,6 +111,7 @@ void app(int port)
             clients[actual] = c;
             clients[actual].partie_index = -1;
             clients[actual].point = 500;
+            clients[actual].nbBlock = 0;
             actual++;
 
             write_client(csock, "connected");
@@ -182,6 +191,36 @@ void app(int port)
                         {
                             handle_spec(clients, actual, i, buffer + 5);
                         }
+                        // for listing blocked users
+                        else if (strncmp(buffer, "list_blocked:", 13) == 0)
+                        {
+                            handle_list_blocked(clients, actual, i);
+                        }
+                        // for blocking a user
+                        else if (strncmp(buffer, "friend:", 7) == 0)
+                        {
+                            handle_friend(clients, actual, i, buffer + 6);
+                        }
+                        // for unblocking a user
+                        else if (strncmp(buffer, "unfriend:", 9) == 0)
+                        {
+                            handle_unfriend(clients, actual, i, buffer + 8);
+                        }
+                                                // for listing blocked users
+                        else if (strncmp(buffer, "list_friend:", 11) == 0)
+                        {
+                            handle_list_friend(clients, actual, i);
+                        }
+                        // for blocking a user
+                        else if (strncmp(buffer, "block:", 6) == 0)
+                        {
+                            handle_block(clients, actual, i, buffer + 6);
+                        }
+                        // for unblocking a user
+                        else if (strncmp(buffer, "unblock:", 8) == 0)
+                        {
+                            handle_unblock(clients, actual, i, buffer + 8);
+                        }
                         // for quitting the game (spectator or player)
                         else if (strncmp(buffer, "quit_game:", 10) == 0)
                         {
@@ -212,7 +251,7 @@ int main(int argc, char **argv)
     init();
     if (argc > 2 || argc < 2 || atoi(argv[1]) < 1024 || atoi(argv[1]) > 65535)
     {
-        printf("Error: arguments error\n");
+        printf("Error: arguments error or port < 1024 or port > 65535\n");
         return EXIT_FAILURE;
     }
 
