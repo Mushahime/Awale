@@ -14,4 +14,6 @@ Demain :
 - update code
 ///(certaines actions sont prioritaires aux écoutes serveurs)
 
+
 - liste d'amis ou de gens bloqué
+
