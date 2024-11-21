@@ -81,3 +81,4 @@ Demain :
 - demo preparation
 - remmettre à 24 le score pour le jeu awale
 - update code
+///(certaines actions sont prioritaires aux écoutes serveurs)
