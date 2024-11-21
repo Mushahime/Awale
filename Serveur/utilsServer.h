@@ -50,18 +50,22 @@ typedef struct {
 typedef struct {
     SOCKET sock;
     char name[BUF_SIZE]; // pseudo
-    char bio[MAX_BIO_LENGTH]; // mutex maybe (for bio)
-    int has_bio; // mutex maybe (for knowing if bio is set)
-    int partie_index; // -1 if not in a game (mutex maybe)
-    int point; // mutex maybe (for ranking)
+    char bio[MAX_BIO_LENGTH]; // (for bio)
+    int has_bio; //  (for knowing if bio is set)
+    int partie_index; // -1 if not in a game
+    int point; //(for ranking)
+    char block[MAX_CLIENTS][PSEUDO_MAX_LENGTH]; // list of blocked users
+    int nbBlock; // number of blocked users
+    char friend[MAX_CLIENTS][PSEUDO_MAX_LENGTH]; // list of friends
+    int nbFriend; // number of friends
 } Client;
 
 typedef struct {
     AwaleChallenge awale_challenge; // instance of the challenge
     JeuAwale jeu; // instance of the game
     int tour; // to know who's turn it is
-    Client Spectators[MAX_CLIENTS]; // mutex maybe // spectators in the game
-    int nbSpectators; // mutex maybe // number of spectators
+    Client Spectators[MAX_CLIENTS]; // spectators in the game
+    int nbSpectators;// number of spectators
     char cout[BUF_SAVE_SIZE]; // save of the game
     int cout_index; // index of the save
     bool in_save; // if the game is saved to know if we can join (for spectators)
@@ -72,12 +76,12 @@ typedef struct {
 #endif
 
 // Global
-extern pthread_mutex_t clients_mutex;
-extern pthread_mutex_t socket_mutex;
-extern AwaleChallenge awale_challenges[MAX_CHALLENGES]; // mutex maybe
-extern int challenge_count; // mutex maybe
-extern PartieAwale awale_parties[MAX_PARTIES]; // mutex maybe
-extern int partie_count; // mutex maybe
+//extern pthread_mutex_t clients_mutex; //useless its asynchrone
+//extern pthread_mutex_t socket_mutex;
+extern AwaleChallenge awale_challenges[MAX_CHALLENGES];
+extern int challenge_count;
+extern PartieAwale awale_parties[MAX_PARTIES];
+extern int partie_count; 
 
 // function declarations
 void init(void);
@@ -92,5 +96,6 @@ int read_client(SOCKET sock, char *buffer);
 void write_client(SOCKET sock, const char *buffer);
 void send_message_to_all_clients(Client *clients, Client sender, int actual, const char *buffer, char from_server);
 void remove_spec(Client *clients, int to_remove, int actual, PartieAwale *partie);
+void update_elo_ratings(Client *winner, Client *loser, bool isDraw);
 
 #endif /* UTILS_H */

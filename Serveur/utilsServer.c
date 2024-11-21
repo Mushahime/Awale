@@ -1,8 +1,8 @@
 #include "utilsServer.h"
 
 // Global
-pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_mutex_t socket_mutex = PTHREAD_MUTEX_INITIALIZER;
+//pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
+//pthread_mutex_t socket_mutex = PTHREAD_MUTEX_INITIALIZER;
 AwaleChallenge awale_challenges[MAX_CHALLENGES];
 int challenge_count = 0;
 PartieAwale awale_parties[MAX_PARTIES];
@@ -29,8 +29,8 @@ void init(void)
 // Function to end the program
 void end(void)
 {
-    pthread_mutex_destroy(&clients_mutex);
-    pthread_mutex_destroy(&socket_mutex);
+    //pthread_mutex_destroy(&clients_mutex);
+    //pthread_mutex_destroy(&socket_mutex);
 #ifdef WIN32
     WSACleanup();
 #endif
@@ -144,44 +144,52 @@ void remove_client(Client *clients, int to_remove, int *actual) {
         }
 
         if (isSpectator) {
-            // Manage spectator leaving
+            // Handle spectator leaving (unchanged)
             remove_spec(partie->Spectators, to_remove, partie->nbSpectators, partie);
         } else {
-            // Manage player leaving
-            int challenge_index = find_challenge(clients[to_remove].name);
-            if (challenge_index != -1) {
-                const char *challenger = awale_challenges[challenge_index].challenger;
-                const char *challenged = awale_challenges[challenge_index].challenged;
-                const char *other_player = strcmp(clients[to_remove].name, challenger) == 0 ? challenged : challenger;
-                
-                for (int i = 0; i < *actual; i++) {
-                    if (strcmp(clients[i].name, other_player) == 0) {
-                        char msg[BUF_SIZE];
-                        snprintf(msg, BUF_SIZE, "\033[1;31mChallenge stopped : %s deconnected\033[0m\n",
-                                clients[to_remove].name);
-                        write_client(clients[i].sock, msg);
-                        break;
-                    }
+            // Handle player disconnection - now with Elo update
+            const char *challenger = partie->awale_challenge.challenger;
+            const char *challenged = partie->awale_challenge.challenged;
+            const char *disconnected = clients[to_remove].name;
+            const char *winner = strcmp(disconnected, challenger) == 0 ? challenged : challenger;
+
+            // Find the winner client
+            Client *winner_client = NULL;
+            Client *disconnected_client = &clients[to_remove];
+
+            for (int i = 0; i < *actual; i++) {
+                if (strcmp(clients[i].name, winner) == 0) {
+                    winner_client = &clients[i];
+                    break;
                 }
-                remove_challenge(challenge_index);
             }
 
-            // Notify all players and spectators about game end
-            int partie_index = clients[to_remove].partie_index;
-            char msg[BUF_SIZE];
-            snprintf(msg, BUF_SIZE, "\033[1;31mGame over! %s has left the game\033[0m\n",
-                    clients[to_remove].name);
-            
-            for (int i = 0; i < *actual; i++) {
-                if (i != to_remove && clients[i].partie_index == partie_index) {
-                    write_client(clients[i].sock, msg);
-                    clients[i].partie_index = -1;
+            if (winner_client != NULL) {
+                // Update Elo ratings - disconnected player loses
+                update_elo_ratings(winner_client, disconnected_client, false);
+
+                char msg[BUF_SIZE];
+                snprintf(msg, BUF_SIZE, "\nGame over! %s has disconnected. %s wins by forfeit!\n", 
+                        disconnected, winner);
+                
+                // Notify remaining players and spectators
+                for (int i = 0; i < *actual; i++) {
+                    if (i != to_remove && clients[i].partie_index == clients[to_remove].partie_index) {
+                        write_client(clients[i].sock, msg);
+                        clients[i].partie_index = -1;
+                    }
                 }
             }
-            remove_partie(partie_index, clients);
+
+            int challenge_index = find_challenge(clients[to_remove].name);
+            if (challenge_index != -1) {
+                remove_challenge(challenge_index);
+            }
+            remove_partie(clients[to_remove].partie_index, clients);
         }
     }
 
+    // Move the rest of the clients (unchanged)
     memmove(clients + to_remove, clients + to_remove + 1, (*actual - to_remove - 1) * sizeof(Client));
     (*actual)--;
 }
@@ -245,6 +253,22 @@ Client *findClientByPseudo(Client *clients, int actual, const char *name)
     }
 
     return NULL;
+}
+
+void update_elo_ratings(Client *winner, Client *loser, bool isDraw) {
+    int facteur = 32;
+    float part_of_calcul_loser = (float)(winner->point - loser->point) / 400;
+    float part_of_calcul_winner = (float)(loser->point - winner->point) / 400;
+    float p_vict_winner = 1/(1+pow(10, part_of_calcul_winner));
+    float p_vict_loser = 1/(1+pow(10, part_of_calcul_loser));
+
+    if (isDraw) {
+        winner->point += facteur * (0.5 - p_vict_winner);
+        loser->point += facteur * (0.5 - p_vict_loser);
+    } else {
+        winner->point += facteur * (1 - p_vict_winner);
+        loser->point += facteur * (0 - p_vict_loser);
+    }
 }
 
 /*Client *findClientIndexByPseudo(Client *clients, int actual, const char *name)

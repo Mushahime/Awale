@@ -33,13 +33,15 @@
 #endif
 
 
-//Function declarations
+//Function declarations (to see)
 void clean_invalid_parties(Client *clients, int actual);
 int check_pseudo(Client *clients, int actual, const char *pseudo);
 void list_connected_clients(Client *clients, int actual, int requester_index);
 int find_challenge(const char *name);
 void add_challenge(const char *challenger, const char *challenged, const char *message_rest);
 void remove_challenge(int index);
+
+//Function declarations
 void handle_awale_response(Client *clients, int actual, int client_index, const char *response);
 void handle_awale_challenge(Client *clients, int actual, int client_index, char *target_pseudo);
 void handle_awale_move(Client *clients, int actual, int client_index, const char *move);
@@ -49,6 +51,12 @@ void handle_private_message(Client *clients, int actual, int sender_index, const
 void handle_save(Client *clients, int actual, int client_index, const char *buffer);
 void handle_spec(Client *clients, int actual, int client_index, const char *buffer);
 void handle_quit_game(Client *clients, int actual, int client_index);
+void handle_block(Client *clients, int actual, int client_index, const char *buffer);
+void handle_unblock(Client *clients, int actual, int client_index, const char *buffer);
+void handle_list_blocked(Client *clients, int actual, int client_index);
+void handle_friend(Client *clients, int actual, int client_index, const char *buffer);
+void handle_unfriend(Client *clients, int actual, int client_index, const char *buffer);
+void handle_list_friend(Client *clients, int actual, int client_index);
 
 
 #endif

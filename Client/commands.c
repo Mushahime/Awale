@@ -73,7 +73,6 @@ void handle_save()
         return;
     }
 
-    // Afficher les sauvegardes disponibles
     for (int i = 0; i < save_count; i++)
     {
         printf("\033[1;34mSave %d:\033[0m\n", i + 1);
@@ -140,7 +139,6 @@ void handle_save()
             }
         }
 
-        // Vérifier si une partie a commencé
         if (partie_en_cours) {
             return;
         }
@@ -215,11 +213,6 @@ void demo_partie(const char *buffer) {
  *
  * @param sock The socket connected to the server.
  */
-/**
- * @brief Handles the bio options menu.
- *
- * @param sock The socket connected to the server.
- */
 void handle_bio_options(SOCKET sock)
 {
     fd_set rdfs;
@@ -235,7 +228,7 @@ void handle_bio_options(SOCKET sock)
 
     while (1) {
         if (partie_en_cours) {
-            return;  // Sort directement si une partie a commencé
+            return;  
         }
 
         FD_ZERO(&rdfs);
@@ -293,10 +286,212 @@ void handle_bio_options(SOCKET sock)
             printf("\n");
             handle_server_message(sock, buffer);
             
-            if (!partie_en_cours) {  // Ne réaffiche le menu que si on n'est pas en partie
+            if (!partie_en_cours) {  
                 printf("\n\033[1;36m=== Bio Options ===\033[0m\n");
                 printf("1. Set your bio\n");
                 printf("2. View someone's bio\n");
+                printf("Others. Return to main menu\n");
+                printf("Choice: ");
+                fflush(stdout);
+            }
+        }
+    }
+}
+
+/**
+ * @brief Handles the block menu.
+ *
+ * @param sock The socket connected to the server.
+ */
+void handle_block(SOCKET sock)
+{
+    fd_set rdfs;
+    struct timeval tv;
+    char input[BUF_SIZE];
+    
+    printf("\n\033[1;36m=== Block Options ===\033[0m\n");
+    printf("1. Block somebody\n");
+    printf("2. Remove somebody\n");
+    printf("3. List blocked users\n");
+    printf("Others. Return to main menu\n");
+    printf("Choice: ");
+    fflush(stdout);
+
+    while (1) {
+        if (partie_en_cours) {
+            return;  
+        }
+
+        FD_ZERO(&rdfs);
+        FD_SET(STDIN_FILENO, &rdfs);
+        FD_SET(sock, &rdfs);
+
+        tv.tv_sec = 0;
+        tv.tv_usec = 100000;
+
+        int ret = select(sock + 1, &rdfs, NULL, NULL, &tv);
+        if (ret == -1) {
+            perror("select()");
+            return;
+        }
+
+        if (FD_ISSET(STDIN_FILENO, &rdfs)) {
+            if (fgets(input, sizeof(input), stdin) != NULL) {
+                input[strcspn(input, "\n")] = '\0';
+                int bio_choice = atoi(input);
+
+                if (bio_choice == 1) {
+                    printf("\033[1;34mEnter the nickname to add to the list: \033[0m");
+                    if (fgets(input, sizeof(input), stdin) != NULL) {
+                        input[strcspn(input, "\n")] = '\0';
+                        char buffer[BUF_SIZE];
+                        snprintf(buffer, sizeof(buffer), "block:%s", input);
+                        write_server(sock, buffer);
+                        return;
+                    }
+                }
+                else if (bio_choice == 2) {
+                    printf("\033[1;34mEnter the nickname to remove to the list: \033[0m");
+                    if (fgets(input, sizeof(input), stdin) != NULL) {
+                        input[strcspn(input, "\n")] = '\0';
+                        char buffer[BUF_SIZE];
+                        snprintf(buffer, sizeof(buffer), "unblock:%s", input);
+                        write_server(sock, buffer);
+                        return;
+                    }
+                }
+                else if (bio_choice == 3) {
+                    char buffer[BUF_SIZE];
+                    strcpy(buffer, "list_blocked:");
+                    write_server(sock, buffer);
+                    return;
+                }
+                else {
+                    printf("\n");
+                    printf("\033[1;31mInvalid bio option selected.\033[0m\n");
+                    printf("\033[1;31mReturning to main menu...\033[0m\n");
+                    display_menu();
+                    return;
+                }
+            }
+        }
+
+        if (FD_ISSET(sock, &rdfs)) {
+            char buffer[BUF_SIZE];
+            int n = read_server(sock, buffer);
+            if (n == 0) {
+                printf("\033[1;31mServer disconnected!\033[0m\n");
+                exit(errno);
+            }
+            printf("\n");
+            handle_server_message(sock, buffer);
+            
+            if (!partie_en_cours) {  
+                printf("\n\033[1;36m=== Block Options ===\033[0m\n");
+                printf("1. Block somebody\n");
+                printf("2. Remove somebody\n");
+                printf("3. List blocked users\n");
+                printf("Others. Return to main menu\n");
+                printf("Choice: ");
+                fflush(stdout);
+            }
+        }
+    }
+}
+
+/**
+ * @brief Handles the block menu.
+ *
+ * @param sock The socket connected to the server.
+ */
+void handle_friend(SOCKET sock)
+{
+    fd_set rdfs;
+    struct timeval tv;
+    char input[BUF_SIZE];
+    
+    printf("\n\033[1;36m=== Friend Options ===\033[0m\n");
+    printf("1. Friend somebody\n");
+    printf("2. Remove  of your friend\n");
+    printf("3. Friends list\n");
+    printf("Others. Return to main menu\n");
+    printf("Choice: ");
+    fflush(stdout);
+
+    while (1) {
+        if (partie_en_cours) {
+            return;  
+        }
+
+        FD_ZERO(&rdfs);
+        FD_SET(STDIN_FILENO, &rdfs);
+        FD_SET(sock, &rdfs);
+
+        tv.tv_sec = 0;
+        tv.tv_usec = 100000;
+
+        int ret = select(sock + 1, &rdfs, NULL, NULL, &tv);
+        if (ret == -1) {
+            perror("select()");
+            return;
+        }
+
+        if (FD_ISSET(STDIN_FILENO, &rdfs)) {
+            if (fgets(input, sizeof(input), stdin) != NULL) {
+                input[strcspn(input, "\n")] = '\0';
+                int bio_choice = atoi(input);
+
+                if (bio_choice == 1) {
+                    printf("\033[1;34mEnter the nickname to add to the list: \033[0m");
+                    if (fgets(input, sizeof(input), stdin) != NULL) {
+                        input[strcspn(input, "\n")] = '\0';
+                        char buffer[BUF_SIZE];
+                        snprintf(buffer, sizeof(buffer), "friend:%s", input);
+                        write_server(sock, buffer);
+                        return;
+                    }
+                }
+                else if (bio_choice == 2) {
+                    printf("\033[1;34mEnter the nickname to remove to the list: \033[0m");
+                    if (fgets(input, sizeof(input), stdin) != NULL) {
+                        input[strcspn(input, "\n")] = '\0';
+                        char buffer[BUF_SIZE];
+                        snprintf(buffer, sizeof(buffer), "unfriend:%s", input);
+                        write_server(sock, buffer);
+                        return;
+                    }
+                }
+                else if (bio_choice == 3) {
+                    char buffer[BUF_SIZE];
+                    strcpy(buffer, "list_friend:");
+                    write_server(sock, buffer);
+                    return;
+                }
+                else {
+                    printf("\n");
+                    printf("\033[1;31mInvalid bio option selected.\033[0m\n");
+                    printf("\033[1;31mReturning to main menu...\033[0m\n");
+                    display_menu();
+                    return;
+                }
+            }
+        }
+
+        if (FD_ISSET(sock, &rdfs)) {
+            char buffer[BUF_SIZE];
+            int n = read_server(sock, buffer);
+            if (n == 0) {
+                printf("\033[1;31mServer disconnected!\033[0m\n");
+                exit(errno);
+            }
+            printf("\n");
+            handle_server_message(sock, buffer);
+            
+            if (!partie_en_cours) {  
+                printf("\n\033[1;36m=== Block Options ===\033[0m\n");
+                printf("1. Block somebody\n");
+                printf("2. Remove somebody\n");
+                printf("3. List blocked users\n");
                 printf("Others. Return to main menu\n");
                 printf("Choice: ");
                 fflush(stdout);
@@ -325,7 +520,7 @@ void handle_spec(SOCKET sock)
 
     while (1) {
         if (partie_en_cours) {
-            return;  // Sort directement si une partie a commencé
+            return;  
         }
 
         FD_ZERO(&rdfs);

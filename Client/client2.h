@@ -46,6 +46,7 @@ typedef struct in_addr IN_ADDR;
 #define PSEUDO_MIN_LENGTH 2
 #define MAX_PARTIES 25
 
+// Typedefs
 typedef enum
 {
     SEND_PUBLIC_MESSAGE = 1,
@@ -56,7 +57,10 @@ typedef enum
     LIST_GAMES_IN_PROGRESS,
     SEE_SAVE,
     SPEC,
+    BLOCK,
+    FRIEND,
     CLEAR_SCREEN,
+    NOT_IMPLEMENTED,
     QUIT
 } MenuChoice;
 

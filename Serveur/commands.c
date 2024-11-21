@@ -211,48 +211,55 @@ void handle_quit_game(Client *clients, int actual, int client_index) {
         }
 
         if (isSpectator) {
-            // Handle spectator leaving
+            // Handle spectator leaving (unchanged)
             for (int i = 0; i < partie->nbSpectators; i++) {
                 if (strcmp(partie->Spectators[i].name, clients[client_index].name) == 0) {
-                    // Remove spectator and shift remaining spectators
                     memmove(&partie->Spectators[i], &partie->Spectators[i + 1], 
                             (partie->nbSpectators - i - 1) * sizeof(Client));
                     partie->nbSpectators--;
                     break;
                 }
             }
-            // Reset spectator's partie_index
             clients[client_index].partie_index = -1;
             
         } else {
-            // Existing player quit handling code...
-            int challenge_index = find_challenge(clients[client_index].name);
-            if (challenge_index != -1) {
-                const char *challenger = awale_challenges[challenge_index].challenger;
-                const char *challenged = awale_challenges[challenge_index].challenged;
-                const char *other_player = strcmp(clients[client_index].name, challenger) == 0 ? challenged : challenger;
-                
-                for (int i = 0; i < actual; i++) {
-                    if (strcmp(clients[i].name, other_player) == 0) {
-                        char msg[BUF_SIZE];
-                        snprintf(msg, BUF_SIZE, "\033[1;31mChallenge cancelled: %s has disconnected\033[0m\n",
-                                clients[client_index].name);
-                        write_client(clients[i].sock, msg);
-                        break;
-                    }
+            // Handle player leaving - now with Elo update
+            const char *challenger = partie->awale_challenge.challenger;
+            const char *challenged = partie->awale_challenge.challenged;
+            const char *quitter = clients[client_index].name;
+            const char *winner = strcmp(quitter, challenger) == 0 ? challenged : challenger;
+
+            // Find the winner client
+            Client *winner_client = NULL;
+            Client *quitter_client = &clients[client_index];
+
+            for (int i = 0; i < actual; i++) {
+                if (strcmp(clients[i].name, winner) == 0) {
+                    winner_client = &clients[i];
+                    break;
                 }
-                remove_challenge(challenge_index);
             }
 
-            // Notify all players and spectators about game end
-            char msg[BUF_SIZE];
-            snprintf(msg, BUF_SIZE, "Game over! %s has left the game\n", clients[client_index].name);
-            
-            for (int i = 0; i < actual; i++) {
-                if (clients[i].partie_index == partie_index) {
-                    write_client(clients[i].sock, msg);
-                    clients[i].partie_index = -1;
+            if (winner_client != NULL) {
+                // Update Elo ratings - quitter loses
+                update_elo_ratings(winner_client, quitter_client, false);
+
+                char msg[BUF_SIZE];
+                snprintf(msg, BUF_SIZE, "\nGame over! %s has left the game. %s wins by forfeit!\n", 
+                        quitter, winner);
+                
+                // Notify all players and spectators
+                for (int i = 0; i < actual; i++) {
+                    if (clients[i].partie_index == partie_index) {
+                        write_client(clients[i].sock, msg);
+                        clients[i].partie_index = -1;
+                    }
                 }
+            }
+
+            int challenge_index = find_challenge(clients[client_index].name);
+            if (challenge_index != -1) {
+                remove_challenge(challenge_index);
             }
             remove_partie(partie_index, clients);
         }
@@ -395,6 +402,7 @@ void handle_awale_challenge(Client *clients, int actual, int client_index, char 
     {
         char response[BUF_SIZE];
         snprintf(response, BUF_SIZE, "You already have a pending challenge.\n");
+        sleep(0.5); // to avoid mix of messages
         write_client(clients[client_index].sock, response);
         return;
     }
@@ -548,7 +556,7 @@ void handle_awale_move(Client *clients, int actual, int client_index, const char
             int classement_challenger = challenger->point;
             int classement_challenged = challenged->point;
 
-            // Update of the ranking
+            // Update of the ranking (we could have used the function update_elo_ratings)
             float part_of_calcul_challenged = (float) (classement_challenger - classement_challenged) / 400;
             float part_of_calcul_challenger = (float) (classement_challenged - classement_challenger) / 400;
             float p_vict_challenger = 1/(1+pow(10, part_of_calcul_challenger));
@@ -861,4 +869,114 @@ void handle_awale_list(Client *clients, int actual, int client_index)
     }
 
     write_client(clients[client_index].sock, list);
+}
+
+// Function to list blocked players
+void handle_list_blocked(Client *clients, int actual, int client_index)
+{
+    char list[BUF_SIZE * MAX_CLIENTS] = "Blocked users:\n";
+
+    for (int i=0; i<clients[client_index].nbBlock; i++)
+    {
+        char user_entry[BUF_SIZE];
+        snprintf(user_entry, BUF_SIZE, "- %s\n", clients[client_index].block[i]);
+        strcat(list, user_entry);
+    }
+
+    if (clients[client_index].nbBlock == 0)
+    {
+        strcat(list, "0 blocked user\n");
+    }
+
+    write_client(clients[client_index].sock, list);
+}
+
+// Function to block a player
+void handle_block(Client *clients, int actual, int client_index, const char *buffer)
+{
+    
+    char target_pseudo[BUF_SIZE];
+    strncpy(target_pseudo, buffer, BUF_SIZE - 1);
+    target_pseudo[BUF_SIZE - 1] = '\0';
+
+    if (strcmp(clients[client_index].name, target_pseudo) == 0)
+    {
+        write_client(clients[client_index].sock, "You cannot block yourself.\n");
+        return;
+    }
+
+    for (int i = 0; i < actual; i++)
+    {
+        if (strcmp(clients[i].name, target_pseudo) == 0)
+        {
+            for (int j = 0; j < clients[client_index].nbBlock; j++)
+            {
+                if (strcmp(clients[client_index].block[j], target_pseudo) == 0)
+                {
+                    write_client(clients[client_index].sock, "This player is already blocked.\n");
+                    return;
+                }
+            }
+
+            strncpy(clients[client_index].block[clients[client_index].nbBlock], target_pseudo, PSEUDO_MAX_LENGTH - 1);
+            
+            clients[client_index].block[clients[client_index].nbBlock][PSEUDO_MAX_LENGTH - 1] = '\0'; // Ensure null termination
+            clients[client_index].nbBlock++;
+            write_client(clients[client_index].sock, "Player blocked successfully.\n");
+            return;
+        }
+    }
+
+    write_client(clients[client_index].sock, "User not found.\n");
+}
+
+// Function to unblock a player
+void handle_unblock(Client *clients, int actual, int client_index, const char *buffer)
+{
+    char target_pseudo[BUF_SIZE];
+    strncpy(target_pseudo, buffer, BUF_SIZE - 1);
+    target_pseudo[BUF_SIZE - 1] = '\0';
+
+    for (int i = 0; i < clients[client_index].nbBlock; i++)
+    {
+        if (strcmp(clients[client_index].block[i], target_pseudo) == 0)
+        {
+            memmove(&clients[client_index].block[i], &clients[client_index].block[i + 1],
+                    (clients[client_index].nbBlock - i - 1) * PSEUDO_MAX_LENGTH);
+            clients[client_index].nbBlock--;
+            write_client(clients[client_index].sock, "Player unblocked successfully.\n");
+            return;
+        }
+    }
+
+    write_client(clients[client_index].sock, "Player not found in blocked list.\n");
+}
+
+void handle_list_friend(Client *clients, int actual, int client_index)
+{
+    char list[BUF_SIZE * MAX_CLIENTS] = "Friends:\n";
+
+    for (int i=0; i<clients[client_index].nbFriend; i++)
+    {
+        char user_entry[BUF_SIZE];
+        snprintf(user_entry, BUF_SIZE, "- %s\n", clients[client_index].friend[i]);
+        strcat(list, user_entry);
+    }
+
+    if (clients[client_index].nbFriend == 0)
+    {
+        strcat(list, "0 friend\n");
+    }
+
+    write_client(clients[client_index].sock, list);
+}
+
+void handle_friend(Client *clients, int actual, int client_index, const char *buffer)
+{
+    return;
+}
+
+void handle_unfriend(Client *clients, int actual, int client_index, const char *buffer)
+{
+    return;
 }

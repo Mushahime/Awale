@@ -103,6 +103,7 @@ void app(int port)
             clients[actual] = c;
             clients[actual].partie_index = -1;
             clients[actual].point = 500;
+            clients[actual].nbBlock = 0;
             actual++;
 
             write_client(csock, "connected");
@@ -181,6 +182,36 @@ void app(int port)
                         else if (strncmp(buffer, "spec:", 5) == 0)
                         {
                             handle_spec(clients, actual, i, buffer + 5);
+                        }
+                        // for listing blocked users
+                        else if (strncmp(buffer, "list_blocked:", 13) == 0)
+                        {
+                            handle_list_blocked(clients, actual, i);
+                        }
+                        // for blocking a user
+                        else if (strncmp(buffer, "friend:", 7) == 0)
+                        {
+                            handle_friend(clients, actual, i, buffer + 6);
+                        }
+                        // for unblocking a user
+                        else if (strncmp(buffer, "unfriend:", 9) == 0)
+                        {
+                            handle_unfriend(clients, actual, i, buffer + 8);
+                        }
+                                                // for listing blocked users
+                        else if (strncmp(buffer, "list_friend:", 11) == 0)
+                        {
+                            handle_list_friend(clients, actual, i);
+                        }
+                        // for blocking a user
+                        else if (strncmp(buffer, "block:", 6) == 0)
+                        {
+                            handle_block(clients, actual, i, buffer + 6);
+                        }
+                        // for unblocking a user
+                        else if (strncmp(buffer, "unblock:", 8) == 0)
+                        {
+                            handle_unblock(clients, actual, i, buffer + 8);
                         }
                         // for quitting the game (spectator or player)
                         else if (strncmp(buffer, "quit_game:", 10) == 0)

@@ -17,6 +17,9 @@ void handle_quit();
 void handle_save();
 void handle_spec(SOCKET sock);
 void handle_quit_game(SOCKET sock);
+void handle_block(SOCKET sock);
+void handle_friend(SOCKET sock);
+
 void demo_partie(const char *buffer);
 void saver(SOCKET sock, char *buffer);
 void process_awale_message(SOCKET sock, char *msg_body);

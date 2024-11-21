@@ -305,12 +305,27 @@ void handle_user_input(SOCKET sock)
         handle_spec(sock);
         break;
 
+    case BLOCK:
+        handle_block(sock);
+        break;
+
+    case FRIEND:
+        handle_friend(sock);
+        break;
+
     case CLEAR_SCREEN:
         clear_screen_custom();
         break;
 
     case QUIT:
         handle_quit();
+        break;
+
+    case NOT_IMPLEMENTED:
+        printf("\033[1;31mNot implemented yet.\033[0m\n");
+        printf("\033[1;31m- Tournament\033[0m\n");
+        printf("\033[1;31m- Save disconnected player (and possibility of reconnection with keypass)\033[0m\n");
+        display_menu();
         break;
 
     default:
@@ -334,8 +349,11 @@ void display_menu()
     printf("6.  ALl games in progression\n");
     printf("7.  See the save games\n");
     printf("8.  Spectate a game\n");
-    printf("9.  Clear screen\n");
-    printf("10. Quit\n");
+    printf("9.  Blocked users\n");
+    printf("10. Friend list\n");
+    printf("11. Clear screen\n");
+    printf("12. Not Implemented\n");
+    printf("13. Quit\n");
     printf("\n");
     printf("Choice: ");
     fflush(stdout);
