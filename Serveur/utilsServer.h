@@ -39,14 +39,19 @@ typedef struct sockaddr_in SOCKADDR_IN;
 typedef struct sockaddr SOCKADDR;
 typedef struct in_addr IN_ADDR;
 
+// Specific struct
+
+// Structure to store a challenge (substrucutre of PartieAwale)
 typedef struct {
     char challenger[PSEUDO_MAX_LENGTH]; // pseudo of the challenger
     char challenged[PSEUDO_MAX_LENGTH]; // pseudo of the challenged
     bool prive; // true if private challenge
     char private_spec[MAX_CLIENTS][PSEUDO_MAX_LENGTH]; // private spectators (who is allowed to see the game)
     int private_spec_count; // count of private spectators
+    time_t challenge_time; // time of the challenge
 } AwaleChallenge;
 
+// Structure to store client data
 typedef struct {
     SOCKET sock;
     char name[BUF_SIZE]; // pseudo
@@ -60,6 +65,8 @@ typedef struct {
     int nbFriend; // number of friends
 } Client;
 
+
+// Structure to store a game
 typedef struct {
     AwaleChallenge awale_challenge; // instance of the challenge
     JeuAwale jeu; // instance of the game
@@ -97,5 +104,11 @@ void write_client(SOCKET sock, const char *buffer);
 void send_message_to_all_clients(Client *clients, Client sender, int actual, const char *buffer, char from_server);
 void remove_spec(Client *clients, int to_remove, int actual, PartieAwale *partie);
 void update_elo_ratings(Client *winner, Client *loser, bool isDraw);
+void clean_invalid_parties(Client *clients, int actual);
+int check_pseudo(Client *clients, int actual, const char *pseudo);
+int find_challenge(const char *name);
+void add_challenge(const char *challenger, const char *challenged, const char *message_rest);
+void remove_challenge(int index);
+void check_challenge_timeouts(Client *clients, int actual);
 
 #endif /* UTILS_H */

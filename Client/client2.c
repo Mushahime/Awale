@@ -210,6 +210,13 @@ void handle_server_message(SOCKET sock, char *buffer)
             saver(sock, buffer);
         }
     }
+    // for expired game
+    else if (strstr(buffer, "expired") != NULL)
+    {
+        printf("\033[1;31m%s\033[0m\n", buffer);
+        partie_en_cours = false;
+        should_display_menu = true;
+    }
     // for spectator when he is accepted in a game
     else if (strstr(buffer, "spectating")!=NULL)
     {

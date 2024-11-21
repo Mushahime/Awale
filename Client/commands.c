@@ -280,7 +280,7 @@ void handle_bio_options(SOCKET sock)
             char buffer[BUF_SIZE];
             int n = read_server(sock, buffer);
             if (n == 0) {
-                printf("\033[1;31mServer disconnected!\033[0m\n");
+                printf("\n\033[1;31mServer disconnected!\033[0m\n");
                 exit(errno);
             }
             printf("\n");
@@ -380,7 +380,7 @@ void handle_block(SOCKET sock)
             char buffer[BUF_SIZE];
             int n = read_server(sock, buffer);
             if (n == 0) {
-                printf("\033[1;31mServer disconnected!\033[0m\n");
+                printf("\n\033[1;31mServer disconnected!\033[0m\n");
                 exit(errno);
             }
             printf("\n");
@@ -481,7 +481,7 @@ void handle_friend(SOCKET sock)
             char buffer[BUF_SIZE];
             int n = read_server(sock, buffer);
             if (n == 0) {
-                printf("\033[1;31mServer disconnected!\033[0m\n");
+                printf("\n\033[1;31mServer disconnected!\033[0m\n");
                 exit(errno);
             }
             printf("\n");
@@ -565,7 +565,7 @@ void handle_spec(SOCKET sock)
             char buffer[BUF_SIZE];
             int n = read_server(sock, buffer);
             if (n == 0) {
-                printf("\033[1;31mServer disconnected!\033[0m\n");
+                printf("\n\033[1;31mServer disconnected!\033[0m\n");
                 exit(errno);
             }
             printf("\n");
@@ -708,7 +708,7 @@ void handle_list_games(SOCKET sock)
             char buffer[BUF_SIZE];
             int n = read_server(sock, buffer);
             if (n == 0) {
-                printf("\033[1;31mServer disconnected!\033[0m\n");
+                printf("\n\033[1;31mServer disconnected!\033[0m\n");
                 exit(errno);
             }
             printf("\n");
@@ -931,6 +931,8 @@ void prompt_for_move(SOCKET sock, int joueur, const char *nom, int plateau[], in
                     write_server(sock, input);
                     printf("\033[1;32mMessage sent!\033[0m\n");
                     printf("Enter a number between %d and %d to play\n", first, last);
+                    printf("Type 'mp:pseudo:message' to send a private message\n");
+                    printf("Type 'quit' to leave the game\n");
                     continue;
                 }
 
@@ -951,16 +953,17 @@ void prompt_for_move(SOCKET sock, int joueur, const char *nom, int plateau[], in
             char buffer[BUF_SIZE];
             int n = read_server(sock, buffer);
             if (n == 0) {
-                printf("\033[1;31mServer disconnected!\033[0m\n");
+                printf("\n\033[1;31mServer disconnected!\033[0m\n");
                 exit(errno);
             }
             handle_server_message(sock, buffer);
             
-            if (partie_en_cours) {  // Ne réaffiche le prompt que si on est toujours en partie
-                printf("\nEnter a number between %d and %d to play: ", first, last);
-                fflush(stdout);
+            if (partie_en_cours) { 
+                printf("Enter a number between %d and %d to play\n", first, last);
+                printf("Type 'mp:pseudo:message' to send a private message\n");
+                printf("Type 'quit' to leave the game\n");
             } else {
-                return;  // Sort de la fonction si la partie est terminée
+                return; 
             }
         }
     }
@@ -1048,7 +1051,7 @@ void prompt_for_new_move(SOCKET sock, int joueur) {
             char buffer[BUF_SIZE];
             int n = read_server(sock, buffer);
             if (n == 0) {
-                printf("\033[1;31mServer disconnected!\033[0m\n");
+                printf("\n\033[1;31mServer disconnected!\033[0m\n");
                 exit(errno);
             }
             handle_server_message(sock, buffer);

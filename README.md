@@ -12,8 +12,6 @@ Demain :
 - Readme/man user, tests
 - remmettre à 24 le score pour le jeu awale
 - update code
-(certaines actions sont prioritaires aux écoutes serveurs)
+///(certaines actions sont prioritaires aux écoutes serveurs)
 
 - liste d'amis ou de gens bloqué
-- déplacer les autres hcoses que handles
-- voir time out (1 min)

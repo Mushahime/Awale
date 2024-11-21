@@ -30,13 +30,21 @@ void app(int port)
         {
             FD_SET(clients[i].sock, &rdfs);
         }
+
+        //for challenge timeout
+        struct timeval timeout;
+        timeout.tv_sec = 1;  // Check every second
+        timeout.tv_usec = 0;
         
         // Management (read/write) of the sockets
-        if (select(max + 1, &rdfs, NULL, NULL, NULL) == -1)
+        if (select(max + 1, &rdfs, NULL, NULL, &timeout) == -1)
         {
             perror("select()");
             exit(errno);
         }
+
+        // chalenge timeout
+        check_challenge_timeouts(clients, actual);
 
         if (FD_ISSET(STDIN_FILENO, &rdfs))
         {
@@ -243,7 +251,7 @@ int main(int argc, char **argv)
     init();
     if (argc > 2 || argc < 2 || atoi(argv[1]) < 1024 || atoi(argv[1]) > 65535)
     {
-        printf("Error: arguments error\n");
+        printf("Error: arguments error or port < 1024 or port > 65535\n");
         return EXIT_FAILURE;
     }
 
