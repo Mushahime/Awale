@@ -48,7 +48,9 @@ void app(int port)
 
         if (FD_ISSET(STDIN_FILENO, &rdfs))
         {
-            break;
+            char temp[BUF_SIZE];
+            fgets(temp, sizeof(temp), stdin); // Read and discard stdin input
+            continue;
         }
         // New client
         else if (FD_ISSET(sock, &rdfs))
@@ -94,7 +96,7 @@ void app(int port)
                 }
                 else
                 {
-                    error_msg = "pseudo_exists";
+                    error_msg = "pseudo_exists or invalid character/name";
                 }
                 write_client(csock, error_msg);
                 closesocket(csock);
@@ -225,6 +227,11 @@ void app(int port)
                         else if (strncmp(buffer, "quit_game:", 10) == 0)
                         {
                             handle_quit_game(clients, actual, i);
+                        }
+                        // friend request respons (form friend_response)
+                        else if (strncmp(buffer, "friend_response:", 15) == 0)
+                        {
+                            handle_friend_response(clients, actual, i, buffer + 15);
                         }
                         else
                         {

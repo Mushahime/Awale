@@ -19,7 +19,6 @@
 #include <stdlib.h>
 #include "../awale.h"
 #include <math.h>
-#include "utilsServer.h"
 
 // Constants
 #define INVALID_SOCKET -1
@@ -49,6 +48,7 @@ void handle_list_blocked(Client *clients, int actual, int client_index);
 void handle_friend(Client *clients, int actual, int client_index, const char *buffer);
 void handle_unfriend(Client *clients, int actual, int client_index, const char *buffer);
 void handle_list_friend(Client *clients, int actual, int client_index);
+void handle_friend_response(Client *clients, int actual, int client_index, const char *buffer);
 
 
 #endif

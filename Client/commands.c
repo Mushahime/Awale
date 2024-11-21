@@ -412,7 +412,7 @@ void handle_friend(SOCKET sock)
     
     printf("\n\033[1;36m=== Friend Options ===\033[0m\n");
     printf("1. Friend somebody\n");
-    printf("2. Remove  of your friend\n");
+    printf("2. Remove someone\n");
     printf("3. Friends list\n");
     printf("Others. Return to main menu\n");
     printf("Choice: ");
@@ -488,10 +488,10 @@ void handle_friend(SOCKET sock)
             handle_server_message(sock, buffer);
             
             if (!partie_en_cours) {  
-                printf("\n\033[1;36m=== Block Options ===\033[0m\n");
-                printf("1. Block somebody\n");
-                printf("2. Remove somebody\n");
-                printf("3. List blocked users\n");
+                printf("\n\033[1;36m=== Friend Options ===\033[0m\n");
+                printf("1. Friend somebody\n");
+                printf("2. Remove someone\n");
+                printf("3. Friends list\n");
                 printf("Others. Return to main menu\n");
                 printf("Choice: ");
                 fflush(stdout);
@@ -594,28 +594,56 @@ void handle_play_awale(SOCKET sock)
     char private_game[BUF_SIZE];
     char private_player[BUF_SIZE];
 
-
     printf("\033[1;34mEnter the nickname of the player you want to play against: \033[0m");
     if (fgets(buffer, sizeof(buffer), stdin) != NULL)
     {
         buffer[strcspn(buffer, "\n")] = '\0'; // Remove newline
 
-        // Send to the server if u want to private the game
         printf("\033[1;34mDo you want to private the game? (yes/no)\033[0m\n");
 
         if (fgets(private_game, sizeof(private_game), stdin) != NULL)
         {
-            //forme awale:pseudo:yes/no
-            private_game[strcspn(private_game, "\n")] = '\0'; // Remove newline
+            private_game[strcspn(private_game, "\n")] = '\0'; 
 
-            //List of players who can spectate the game (coma separated)
             if (strcmp(private_game, "yes") == 0)
             {
-                printf("\033[1;34mEnter the list of players who can spectate the game (: separated)\033[0m\n");
+                printf("\033[1;34mEnter the list of players who can spectate the game (: separated), or press Enter to use your friend list\033[0m\n");
                 if (fgets(private_player, sizeof(private_player), stdin) != NULL)
                 {
-                    private_player[strcspn(private_player, "\n")] = '\0'; // Remove newline
-                    snprintf(input, sizeof(input), "awale:%s:%s:%s:", buffer, private_game, private_player);
+                    private_player[strcspn(private_player, "\n")] = '\0';
+                    
+                    // If empty input, request friend list from server
+                    if (strlen(private_player) == 0) {
+                        // First get the friend list
+                        write_server(sock, "list_friend:");
+                        
+                        // Read server response
+                        char friend_list[BUF_SIZE];
+                        if (read_server(sock, friend_list) != -1) {
+                            // Parse friend list response and extract names
+                            // Format: "Friends:\n- friend1\n- friend2\n..."
+                            char *line = strtok(friend_list, "\n");
+                            char friends[BUF_SIZE] = "";
+                            
+                            while ((line = strtok(NULL, "\n")) != NULL) {
+                                if (line[0] == '-') {
+                                    // Skip the "- " prefix
+                                    strcat(friends, line + 2);
+                                    strcat(friends, ":");
+                                }
+                            }
+                            
+                            // Remove trailing colon if exists
+                            size_t len = strlen(friends);
+                            if (len > 0 && friends[len-1] == ':') {
+                                friends[len-1] = '\0';
+                            }
+                            
+                            snprintf(input, sizeof(input), "awale:%s:%s:%s:", buffer, private_game, friends);
+                        }
+                    } else {
+                        snprintf(input, sizeof(input), "awale:%s:%s:%s:", buffer, private_game, private_player);
+                    }
                 }
             }
             else
@@ -1103,6 +1131,50 @@ bool process_fight_message(SOCKET sock, char *buffer)
     }
 }
 
+/**
+ * @brief Processes fight/challenge messages from the server.
+ *
+ * @param sock The socket connected to the server.
+ * @param buffer The buffer containing the fight message.
+ */
+void process_friend_message(SOCKET sock, char *buffer)
+{
+    printf("\033[1;31m%s\033[0m\n", buffer);
+    printf("\033[1;31mDo you accept the friend request? (yes/no)\033[0m\n");
+
+    // form buffer [Friend] Friend_request from :pseudo
+    char *temp = strtok(buffer, ":");
+    char *pseudo_ask = strtok(NULL, ":");
+
+    char response[BUF_SIZE];
+    while (1)
+    {
+        if (fgets(response, sizeof(response), stdin) != NULL)
+        {
+            response[strcspn(response, "\n")] = '\0'; // Remove newline
+
+            if (strcmp(response, "yes") == 0 || strcmp(response, "no") == 0)
+            {
+                char challenge_response[BUF_SIZE];
+                snprintf(challenge_response, sizeof(challenge_response), "friend_response:%s:%s", response, pseudo_ask);
+                write_server(sock, challenge_response);
+                
+                // If in a game, redisplay the game prompt
+                if (partie_en_cours) {
+                    printf("\n");
+                    printf("You can still play the game\n");
+                    printf("Type 'mp:pseudo:message' to send a private message\n");
+                    printf("Type 'quit' to leave the game\n");
+                }
+                break;
+            }
+            else
+            {
+                printf("\033[1;31mPlease enter 'yes' or 'no'\033[0m\n");
+            }
+        }
+    }
+}
 /**
  * @brief Processes game over messages from the server.
  *
