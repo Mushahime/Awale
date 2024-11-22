@@ -34,6 +34,7 @@
 #define MUTEX_TIMEOUT_SEC 10
 #define RESERVED_WORDS_COUNT 18
 #define _GNU_SOURCE // For strcasestr
+#define CHALLENGE_TIMEOUT 30
 
 // Typedefs
 typedef int SOCKET;
@@ -67,7 +68,7 @@ typedef struct
     int nbBlock;                                 // number of blocked users
     char friend[MAX_CLIENTS][PSEUDO_MAX_LENGTH]; // list of friends
     int nbFriend;                                // number of friends
-
+    //bool is_connected;                           // true if the client is connected -> for persistance
     bool has_pending_request;             // true if this client has a pending request
     char pending_from[PSEUDO_MAX_LENGTH]; // who sent the pending request
 } Client;

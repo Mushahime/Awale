@@ -1,6 +1,6 @@
 # Awale Game - Client/Server Implementation
 
-A networked implementation of the traditional African board game Awale (also known as Oware) with additional social features like friend lists, private messaging, and spectator mode.
+A networked implementation of the traditional African board game Awale (also known as Oware) with additional social features like friend lists, private messaging, and spectator mode (for more info : https://fr.wikipedia.org/wiki/Awal%C3%A9)
 
 ## Overview
 
@@ -21,6 +21,8 @@ make
 
 This will create two executables: `client` and `server`
 
+N.B : the exec 'awale' is only to test the game in solo without client/server interactions.
+
 ## Launch Options
 
 ### Manual Launch
@@ -29,12 +31,17 @@ This will create two executables: `client` and `server`
 go in the repo "Serveur"
 ./server 2000
 ```
+./server <port>
 
 2. Start multiple clients in different terminals:
 ```bash
-go in the repo "Serveur"
-./client 127.0.0.1 2000
+go in the repo "Client"
+./client 127.0.0.1 2000 test
 ```
+./client <address> <port> <pseudo>
+- `address`: Server IP address (e.g., 127.0.0.1 for local testing)
+- `port`: Server port number (between 1024-65535)
+- `pseudo`: Your nickname (2-15 characters, alphanumeric and underscore only)
 
 ### Using Shell Script
 ```bash
@@ -47,19 +54,9 @@ This script will automatically start the server and four client instances.
 ```
 This script will clean all ports (If that doesn't work, we recommend running the programs manually.)
 
-## User Manual
-### Connection
-1. Launch the client with required parameters:
-   ```bash
-   ./client <address> <port> <pseudo>
-   ```
-   - `address`: Server IP address (e.g., 127.0.0.1 for local testing)
-   - `port`: Server port number (between 1024-65535)
-   - `pseudo`: Your nickname (2-15 characters, alphanumeric and underscore only)
+## User Manual 
 
-2. Upon successful connection, you'll see a "Connected successfully!" message and the main menu.
-
-### Main Menu Options
+### Main Menu Options (After connection)
 
 1. **Send message to all**
    - Broadcast a message to all connected users
@@ -126,26 +123,14 @@ This script will clean all ports (If that doesn't work, we recommend running the
 
 ### Special Features
 
-1. **Private Messaging**
-   - Available during games and in lobby
-   - Uses `mp:username:message` format
+1. **Time out (30 sec) during demand if the demand is not accepted**
+2. **Unicity of pseudo**
+3. **Good Managagement of exit ctrl c**
+4. **Reutilisabity of the code**
+5. **Error Management**
+6. **Persistance of player is't done but a part of the code was started (by changing connection, app and remove_client it can be done) -> no time to do it**
 
-2. **Spectator Mode**
-   - Multiple spectators per game
-   - Real-time game updates
-   - Spectator chat support
-
-3. **Friend System**
-   - Quick access to challenge friends
-   - Friend activity notifications
-
-4. **Game History**
-   - View past results and moves
-   - Performance tracking
-
-### Nota Bene
-
-- TODO
+N.B : Some actions block messages of the server while not not done but these actions are atomic and not problematic (public messsage, ...).
 
 ## Credits
 
@@ -154,7 +139,20 @@ Developed by:
 - Abderramane BOUZIANE
 (Project as part on courses in network programming)
 
-# TODO
-Demain :
-- remmettre à 24 le score pour le jeu awale
 
+
+Social Features
+
+Friend list management
+Private messaging
+Player blocking
+Custom biography
+Game spectating
+
+Game Features
+
+ELO ranking system
+Game history
+Match replays
+Private/Public games
+Spectator mode

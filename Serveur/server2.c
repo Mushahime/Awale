@@ -114,6 +114,8 @@ void app(int port)
             clients[actual].partie_index = -1;
             clients[actual].point = 500;
             clients[actual].nbBlock = 0;
+            clients[actual].nbFriend = 0;
+            clients[actual].has_pending_request = false;
             actual++;
 
             write_client(csock, "connected");

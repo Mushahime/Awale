@@ -246,6 +246,7 @@ void handle_server_message(SOCKET sock, char *buffer)
         printf("\033[1;31m%s\033[0m\n", buffer);
         partie_en_cours = false;
         should_display_menu = true;
+        waiting_for_response = false;
     }
     // for spectator when he is accepted in a game
     else if (strstr(buffer, "spectating") != NULL)
@@ -257,7 +258,8 @@ void handle_server_message(SOCKET sock, char *buffer)
     // rest
     else
     {
-        if (strstr(buffer, "not found") != NULL)
+        if (strstr(buffer, "already in a challenge") != NULL || 
+            strstr(buffer, "not found") != NULL)
         {
             waiting_for_response = false;
         }
@@ -271,10 +273,6 @@ void handle_server_message(SOCKET sock, char *buffer)
         display_menu();
         fflush(stdout);
     }
-    /*if (waiting_for_response)
-    {
-        //printf("\033[1;31mYou are waiting for a response. Please wait.\033[0m\n");
-    }*/
 }
 
 /**
@@ -373,7 +371,10 @@ void handle_user_input(SOCKET sock)
     case NOT_IMPLEMENTED:
         printf("\033[1;31mNot implemented yet.\033[0m\n");
         printf("\033[1;31m- Tournament\033[0m\n");
-        printf("\033[1;31m- Save disconnected player (and possibility of reconnection with keypass)\033[0m\n");
+        printf("\033[1;31m- Save disconnected player -> Persistance (see persistance.c)\033[0m\n");
+        printf("\033[1;31m- Secure connection\033[0m\n");
+        printf("\033[1;31m- Matchmaking\033[0m\n");
+        printf("\033[1;31m- AI for games\033[0m\n");
         display_menu();
         break;
 
