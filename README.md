@@ -54,7 +54,9 @@ This script will clean all ports (If that doesn't work, we recommend running the
 
 ## User Manual 
 
-### Main Menu Options (After connection)
+### Main Menu Options (After connection)*
+
+Follow the followin switch case :
 
 1. **Send message to all**
    - Broadcast a message to all connected users
@@ -83,7 +85,7 @@ This script will clean all ports (If that doesn't work, we recommend running the
 
 7. **See the save games**
    - Access history of your completed games
-   - Press 1 to select the game you see
+   - Press 1 to select the game you see (and after choose the game you want by its id)
    
 8. **Spectate a game**
    - Watch ongoing matches between other players
