@@ -56,7 +56,7 @@ This script will clean all ports (If that doesn't work, we recommend running the
 
 ### Main Menu Options (After connection)*
 
-Follow the followin switch case :
+Follow the following switch case :
 
 1. **Send message to all**
    - Broadcast a message to all connected users
