@@ -31,14 +31,12 @@ N.B : the exec 'awale' is only to test the game in solo without client/server in
 go in the repo "Serveur"
 ./server 2000
 ```
-./server <port>
 
 2. Start multiple clients in different terminals:
 ```bash
 go in the repo "Client"
 ./client 127.0.0.1 2000 test
 ```
-./client <address> <port> <pseudo>
 - `address`: Server IP address (e.g., 127.0.0.1 for local testing)
 - `port`: Server port number (between 1024-65535)
 - `pseudo`: Your nickname (2-15 characters, alphanumeric and underscore only)
@@ -68,17 +66,16 @@ This script will clean all ports (If that doesn't work, we recommend running the
    - Write your muti-line message and press Enter to send
 
 3. **List connected users**
-   - Shows all online users and their current number of gained points
+   - Shows all online users and their current number of gained points (start with 500 points)
 
 4. **Bio options**
    - View and update your player biography
    - Set personal information visible to other players
 
 5. **Play awale vs someone**
-   - Challenge another player to an Awale match
-   - Specify if you want to set the game to be private or public
-   - If the game was set to private the user has the option of making his friends spectators( press Enter),specify manually the players he wants as spectators using the foramt `<pseudo>:<pseudo>:..`
-   - Enter opponent's username when prompted
+   - Challenge another player to an Awale match (Enter opponent's username)
+   - After, specify if you want to set the game to be private or public
+   - If the game was set to private the user has the option of making his friends possible spectators (press Enter) or specify manually the players he wants as spectators using the format `<pseudo>:<pseudo>:..`
    
 6. **All games in progression**
    - View list of ongoing Awale matches
@@ -128,7 +125,8 @@ This script will clean all ports (If that doesn't work, we recommend running the
 3. **Good Managagement of exit ctrl c**
 4. **Reutilisabity of the code**
 5. **Error Management**
-6. **Persistance of player is't done but a part of the code was started (by changing connection, app and remove_client it can be done) -> no time to do it**
+6. **Elo ranking system**
+7. **Persistance of player is't done but a part of the code was started (by changing connection, app and remove_client it can be done) -> no time to do it**
 
 N.B : Some actions block messages of the server while not not done but these actions are atomic and not problematic (public messsage, ...).
 
@@ -137,22 +135,4 @@ N.B : Some actions block messages of the server while not not done but these act
 Developed by:
 - Noam CATHERINE
 - Abderramane BOUZIANE
-(Project as part on courses in network programming)
-
-
-
-Social Features
-
-Friend list management
-Private messaging
-Player blocking
-Custom biography
-Game spectating
-
-Game Features
-
-ELO ranking system
-Game history
-Match replays
-Private/Public games
-Spectator mode
+//Project as part on courses in network programming
