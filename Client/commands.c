@@ -596,7 +596,7 @@ void handle_play_awale(SOCKET sock)
     char input[BUF_SIZE];
     char private_game[BUF_SIZE];
     char private_player[BUF_SIZE];
-    waiting_for_response = true;
+    //waiting_for_response = true;
 
 
     printf("\033[1;34mEnter the nickname of the player you want to play against: \033[0m");
@@ -1212,6 +1212,10 @@ bool process_fight_message(SOCKET sock, char *buffer)
                 char challenge_response[BUF_SIZE];
                 snprintf(challenge_response, sizeof(challenge_response), "awale_response:%s", response);
                 write_server(sock, challenge_response);
+                waiting_for_response = false;  // Reset waiting_for_response flag
+                if (strcmp(response, "no") == 0) {
+                    display_menu();  // Show menu immediately after declining
+                }
                 break;
             }
             else
