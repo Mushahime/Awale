@@ -2,7 +2,7 @@
 
 # Define colors for output
 RED='\033[0;31m'
-GREEN='\033[0;32m'
+GREEN='\033[0;32m' 
 NC='\033[0m'
 
 # Function to print colored messages
@@ -16,7 +16,7 @@ print_message() {
 kill_port_processes() {
     local port=$1
     local pids=$(lsof -ti :$port 2>/dev/null)
-
+    
     if [ ! -z "$pids" ]; then
         print_message "$RED" "Killing processes on port $port: $pids"
         kill -9 $pids 2>/dev/null
@@ -37,40 +37,58 @@ check_port() {
 # Function to kill specific application processes
 kill_app_processes() {
     local port=$1
-
+    
     # Kill server and client processes for this specific port
     pkill -f "./server $port"
     pkill -f "./client localhost $port"
+}
+
+# Function to cleanup terminals
+cleanup_terminals() {
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        # macOS - Close all Terminal windows except the current one
+        osascript -e 'tell application "Terminal"
+            set windowCount to count windows
+            repeat with i from 1 to windowCount - 1
+                close window 1
+            end repeat
+        end tell'
+    else
+        # Linux - Kill specific terminal emulators
+        pkill gnome-terminal
+        pkill konsole
+        pkill xterm
+        pkill urxvt
+    fi
 }
 
 # Function to cleanup a range of ports
 cleanup_port_range() {
     local base_port=$1
     local num_ports=$2
-
+    
     print_message "$GREEN" "Cleaning up ports $base_port through $((base_port + num_ports - 1))..."
-
-    # Kill xterm on Linux (only once, not per port)
-    if [[ "$OSTYPE" != "darwin"* ]]; then
-        pkill xterm
-    fi
-
+    
+    # Clean terminals first
+    print_message "$GREEN" "Cleaning up terminal windows..."
+    cleanup_terminals
+    
     # Clean each port in the range
     for ((i = 0; i < num_ports; i++)); do
         local current_port=$((base_port + i))
-
+        
         # Kill application specific processes
         kill_app_processes $current_port
-
+        
         # Kill any remaining processes using the port
         if command -v lsof >/dev/null; then
             kill_port_processes $current_port
         fi
     done
-
+    
     # Wait for ports to be freed
     sleep 1
-
+    
     # Verify port status
     local all_ports_free=true
     for ((i = 0; i < num_ports; i++)); do
@@ -82,9 +100,9 @@ cleanup_port_range() {
             print_message "$GREEN" "Port $current_port successfully freed!"
         fi
     done
-
+    
     if $all_ports_free; then
-        print_message "$GREEN" "All ports successfully cleaned!"
+        print_message "$GREEN" "All ports and terminals successfully cleaned!"
         return 0
     else
         print_message "$RED" "Some ports are still in use"

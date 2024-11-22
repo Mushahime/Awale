@@ -247,7 +247,7 @@ bool nourrir_adversaire_possible(JeuAwale *jeu, int joueur)
 bool verifier_fin_partie(JeuAwale *jeu)
 {
     // Check if a player has more than 24 seeds
-    if (jeu->score_joueur1 >= 2 || jeu->score_joueur2 >= 2) // For now, we keep 2 for the tests
+    if (jeu->score_joueur1 >= 24 || jeu->score_joueur2 >= 24) // For now, we keep 2 for the tests
     {
         // Take all the remaining seeds
         for (int i = 0; i < TAILLE_PLATEAU; i++)

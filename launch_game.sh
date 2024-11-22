@@ -8,29 +8,23 @@ check_port() {
     return 1 # Port is in use
 }
 
-# Function to find the next available port
-find_available_port() {
-    local base_port=$1
-    local max_attempts=5
+# Function to get a random port number between 1024 and 65535
+get_random_port() {
+    local min_port=1024
+    local max_port=65535
     local port
-
-    for i in $(seq 0 $((max_attempts - 1))); do
-        port=$((base_port + i))
+    
+    while true; do
+        port=$(($RANDOM % ($max_port - $min_port + 1) + $min_port))
         if check_port "$port"; then
             echo "$port"
             return 0
         fi
     done
-
-    echo "No available ports found in range $base_port-$((base_port + max_attempts - 1))" >&2
-    exit 1
 }
 
-# Base port (will try this and the next 4 ports)
-BASE_PORT=1234
-
-# Find an available port
-PORT=$(find_available_port "$BASE_PORT")
+# Get a random available port
+PORT=$(get_random_port)
 echo "Using port: $PORT"
 
 # Compile the server and client
@@ -52,7 +46,6 @@ if [[ ! -x "$SERVER_PATH" ]]; then
     echo "Server executable not found at $SERVER_PATH or is not executable." >&2
     exit 1
 fi
-
 if [[ ! -x "$CLIENT_PATH" ]]; then
     echo "Client executable not found at $CLIENT_PATH or is not executable." >&2
     exit 1
@@ -61,11 +54,16 @@ fi
 # Launch the server in a new terminal
 if [[ "$OSTYPE" == "darwin"* ]]; then
     # macOS
-    osascript -e "tell application \"Terminal\" to do script \"cd '$CURRENT_DIR/Serveur' && ./server $PORT; exec bash\""
+    osascript -e "tell application \"Terminal\"
+        set serverWindow to do script \"cd '$CURRENT_DIR/Serveur' && ./server $PORT; exec bash\"
+        tell serverWindow
+            set custom title to \"Awale Server\"
+        end tell
+    end tell"
 else
     # Linux with gnome-terminal
     if command -v gnome-terminal >/dev/null 2>&1; then
-        gnome-terminal -- bash -c "cd '$CURRENT_DIR/Serveur' && ./server $PORT; exec bash" &
+        gnome-terminal --title="Awale Server" -- bash -c "cd '$CURRENT_DIR/Serveur' && ./server $PORT; exec bash" &
     else
         echo "gnome-terminal not found. Please install it or modify the script to use your preferred terminal emulator." >&2
         exit 1
@@ -82,11 +80,16 @@ PSEUDOS=("player1" "player2" "player3" "player4")
 for i in {0..3}; do
     if [[ "$OSTYPE" == "darwin"* ]]; then
         # macOS
-        osascript -e "tell application \"Terminal\" to do script \"cd '$CURRENT_DIR/Client' && ./client localhost $PORT ${PSEUDOS[$i]}; exec bash\""
+        osascript -e "tell application \"Terminal\"
+            set clientWindow to do script \"cd '$CURRENT_DIR/Client' && ./client localhost $PORT ${PSEUDOS[$i]}; exec bash\"
+            tell clientWindow
+                set custom title to \"Awale - ${PSEUDOS[$i]}\"
+            end tell
+        end tell"
     else
         # Linux with gnome-terminal
         if command -v gnome-terminal >/dev/null 2>&1; then
-            gnome-terminal -- bash -c "cd '$CURRENT_DIR/Client' && ./client localhost $PORT ${PSEUDOS[$i]}; exec bash" &
+            gnome-terminal --title="Awale - ${PSEUDOS[$i]}" -- bash -c "cd '$CURRENT_DIR/Client' && ./client localhost $PORT ${PSEUDOS[$i]}; exec bash" &
         else
             echo "gnome-terminal not found. Please install it or modify the script to use your preferred terminal emulator." >&2
             exit 1

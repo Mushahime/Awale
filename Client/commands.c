@@ -3,6 +3,9 @@
 #include <string.h>
 #include <time.h>
 
+// Due to a strange code architecture, some functions are too much imbriqued because we needed to always listen to the server...
+// But we can still refactor some parts of the code to make it more readable and maintainable. But it works for now.
+
 /**
  * @brief Handles sending a public message to the server.
  *
@@ -1041,6 +1044,7 @@ void process_awale_message(SOCKET sock, char *msg_body)
     if (msg == NULL)
     {
         perror("strdup failed");
+        free(msg);
         exit(EXIT_FAILURE);
     }
 

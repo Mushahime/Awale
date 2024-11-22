@@ -464,7 +464,6 @@ void check_challenge_timeouts(Client *clients, int actual)
         Client *challenger = NULL;
         Client *challenged = NULL;
 
-        // Find both players
         for (int j = 0; j < actual; j++)
         {
             if (strcmp(clients[j].name, challenge->challenger) == 0)
@@ -479,27 +478,27 @@ void check_challenge_timeouts(Client *clients, int actual)
                 break;
         }
 
-        // Check if game is not already started (partie_index == -1)
-        if ((challenger && challenger->partie_index == -1) &&
-            (challenged && challenged->partie_index == -1) &&
-            (current_time - challenge->challenge_time > 60))
+        if (!challenger || !challenged)
         {
+            remove_challenge(i);
+            continue;
+        }
 
-            if (challenger)
-            {
-                char msg[BUF_SIZE];
-                snprintf(msg, BUF_SIZE, "Challenge to %s has expired (no response within 1 minute)\n",
-                         challenge->challenged);
-                write_client(challenger->sock, msg);
-            }
+        if (challenger->partie_index != -1 || challenged->partie_index != -1)
+        {
+            continue;
+        }
 
-            if (challenged && strcmp(challenger->name, challenged->name) != 0)
-            {
-                char msg[BUF_SIZE];
-                snprintf(msg, BUF_SIZE, "Challenge from %s has expired\n",
-                         challenge->challenger);
-                write_client(challenged->sock, msg);
-            }
+        if (current_time - challenge->challenge_time > CHALLENGE_TIMEOUT)
+        {
+            char msg[BUF_SIZE];
+            snprintf(msg, BUF_SIZE, "Challenge to %s has expired (no response within 30 seconds)\n",
+                     challenge->challenged);
+            write_client(challenger->sock, msg);
+
+            snprintf(msg, BUF_SIZE, "Challenge from %s has expired\n",
+                     challenge->challenger);
+            write_client(challenged->sock, msg);
 
             remove_challenge(i);
         }
