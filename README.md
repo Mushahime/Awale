@@ -132,7 +132,7 @@ N.B : Some actions block messages of the server while not not done but these act
 
 ## Credits
 
+Project as part on courses in network programming
 Developed by:
 - Noam CATHERINE
 - Abderramane BOUZIANE
-//Project as part on courses in network programming
