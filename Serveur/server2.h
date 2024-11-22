@@ -31,6 +31,4 @@ void app(int port);
 #error not defined for this platform
 #endif
 
-
-
 #endif

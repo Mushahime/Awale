@@ -8,15 +8,15 @@ check_port() {
     return 1 # Port is in use
 }
 
-# Function to find next available port
+# Function to find the next available port
 find_available_port() {
     local base_port=$1
     local max_attempts=5
     local port
     for i in $(seq 0 $((max_attempts-1))); do
         port=$((base_port + i))
-        if check_port $port; then
-            echo $port
+        if check_port "$port"; then
+            echo "$port"
             return 0
         fi
     done
@@ -56,28 +56,44 @@ trap cleanup EXIT INT TERM
 BASE_PORT=1234
 
 # Find an available port
-PORT=$(find_available_port $BASE_PORT)
+PORT=$(find_available_port "$BASE_PORT")
 echo "Using port: $PORT"
 
 # Compile the server and client
 make clean
 if ! make; then
-    echo "Compilation failed!"
+    echo "Compilation failed. Exiting." >&2
+    exit 1
+fi
+
+# Get the current directory
+CURRENT_DIR="$(pwd)"
+
+# Define paths to server and client executables
+SERVER_PATH="$CURRENT_DIR/Serveur/server"
+CLIENT_PATH="$CURRENT_DIR/Client/client"
+
+# Check if server and client executables exist
+if [[ ! -x "$SERVER_PATH" ]]; then
+    echo "Server executable not found at $SERVER_PATH or is not executable." >&2
+    exit 1
+fi
+
+if [[ ! -x "$CLIENT_PATH" ]]; then
+    echo "Client executable not found at $CLIENT_PATH or is not executable." >&2
     exit 1
 fi
 
 # Launch the server in a new terminal
 if [[ "$OSTYPE" == "darwin"* ]]; then
     # macOS
-    if ! osascript -e "tell app \"Terminal\" to do script \"cd $(pwd) && ./server $PORT\""; then
-        echo "Failed to launch server"
-        exit 1
-    fi
+    osascript -e "tell application \"Terminal\" to do script \"cd '$CURRENT_DIR/Serveur' && ./server $PORT; exec bash\""
 else
-    # Linux with xterm
-    xterm -hold -e "./Serveur/server $PORT" &
-    if [ $? -ne 0 ]; then
-        echo "Failed to launch server"
+    # Linux with gnome-terminal
+    if command -v gnome-terminal >/dev/null 2>&1; then
+        gnome-terminal -- bash -c "cd '$CURRENT_DIR/Serveur' && ./server $PORT; exec bash" &
+    else
+        echo "gnome-terminal not found. Please install it or modify the script to use your preferred terminal emulator." >&2
         exit 1
     fi
 fi
@@ -97,17 +113,13 @@ PSEUDOS=("player1" "player2" "player3" "player4")
 for i in {0..3}; do
     if [[ "$OSTYPE" == "darwin"* ]]; then
         # macOS
-        if ! osascript -e "tell app \"Terminal\" to do script \"cd $(pwd) && ./client localhost $PORT ${PSEUDOS[$i]}\""; then
-            echo "Failed to launch client ${PSEUDOS[$i]}"
-            cleanup
-            exit 1
-        fi
+        osascript -e "tell application \"Terminal\" to do script \"cd '$CURRENT_DIR/Client' && ./client localhost $PORT ${PSEUDOS[$i]}; exec bash\""
     else
-        # Linux with xterm
-        xterm -hold -e "./Client/client localhost $PORT ${PSEUDOS[$i]}" &
-        if [ $? -ne 0 ]; then
-            echo "Failed to launch client ${PSEUDOS[$i]}"
-            cleanup
+        # Linux with gnome-terminal
+        if command -v gnome-terminal >/dev/null 2>&1; then
+            gnome-terminal -- bash -c "cd '$CURRENT_DIR/Client' && ./client localhost $PORT ${PSEUDOS[$i]}; exec bash" &
+        else
+            echo "gnome-terminal not found. Please install it or modify the script to use your preferred terminal emulator." >&2
             exit 1
         fi
     fi
@@ -115,8 +127,5 @@ for i in {0..3}; do
     # Wait a bit before launching the next client
     sleep 1
 done
-
-# Remove trap as everything started successfully
-trap - EXIT INT TERM
 
 echo "Server and clients launched successfully on port $PORT!"

@@ -31,11 +31,11 @@ void app(int port)
             FD_SET(clients[i].sock, &rdfs);
         }
 
-        //for challenge timeout
+        // for challenge timeout
         struct timeval timeout;
-        timeout.tv_sec = 1;  // Check every second
+        timeout.tv_sec = 1; // Check every second
         timeout.tv_usec = 0;
-        
+
         // Management (read/write) of the sockets
         if (select(max + 1, &rdfs, NULL, NULL, &timeout) == -1)
         {
@@ -146,7 +146,7 @@ void app(int port)
                     }
                     // Others cases
                     else
-                    {   
+                    {
                         // for listing all connected clients
                         if (strncmp(buffer, "list:", 5) == 0)
                         {
@@ -208,7 +208,7 @@ void app(int port)
                         {
                             handle_unfriend(clients, actual, i, buffer + 8);
                         }
-                                                // for listing blocked users
+                        // for listing blocked users
                         else if (strncmp(buffer, "list_friend:", 11) == 0)
                         {
                             handle_list_friend(clients, actual, i);

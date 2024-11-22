@@ -12,8 +12,8 @@
 typedef struct
 {
     int plateau[TAILLE_PLATEAU]; // Game board (12 cases)
-    int score_joueur1; // Score of player 1
-    int score_joueur2; // Score of player 2
+    int score_joueur1;           // Score of player 1
+    int score_joueur2;           // Score of player 2
 } JeuAwale;
 
 // Function to initialize the game board
