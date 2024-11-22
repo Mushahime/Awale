@@ -38,7 +38,7 @@ go in the repo "Serveur"
 
 ### Using Shell Script
 ```bash
-./launch.sh
+./launch_game.sh
 ```
 This script will automatically start the server and four client instances.
 
@@ -58,7 +58,7 @@ This script will clean all ports (If that doesn't work, we recommend running the
 - TODO
 
 ### During Game
-
+    
 - TODO
 
 ### Special Features
@@ -78,11 +78,5 @@ Developed by:
 
 # TODO
 Demain :
-- Readme/man user, tests
-- demo preparation
 - remmettre à 24 le score pour le jeu awale
-- update code
-- deconnection friendlist ??
-- action unitaire bloquante
-- autres pb
 
