@@ -1,18 +1,19 @@
 CC = gcc
-CFLAGS = -Wall -Wdiscarded-qualifiers -Wimplicit-function-declaration -Wincompatible-pointer-types -Wunused-function -Wextra -Wno-format-truncation -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-variable -g -pthread -lm 
+CFLAGS = -Wall -Wformat -Wdiscarded-qualifiers -Wimplicit-function-declaration -Wincompatible-pointer-types -Wunused-function -Wextra -Wno-format-truncation -Wno-unused-parameter -Wno-missing-field-initializers -Wno-unused-variable -g -pthread
 
 CLIENT_DIR = Client
 SERVER_DIR = Serveur
 
-# Define the object files
+# Adding persistence objects
 SERVER_OBJS = $(SERVER_DIR)/server2.o \
               $(SERVER_DIR)/utilsServer.o \
               $(SERVER_DIR)/commands.o \
+              $(SERVER_DIR)/persistance.o \
               awale.o
 
 CLIENT_OBJS = $(CLIENT_DIR)/client2.o \
               $(CLIENT_DIR)/utilsClient.o \
-			  $(CLIENT_DIR)/commands.o \
+              $(CLIENT_DIR)/commands.o \
               awale.o
 
 AWALE_OBJS = awale.o main.o
@@ -29,8 +30,12 @@ client: $(CLIENT_OBJS)
 awale: $(AWALE_OBJS)
 	$(CC) $(CFLAGS) -o $@ $^ -lm
 
-# Rules for object files -> server
-$(SERVER_DIR)/server2.o: $(SERVER_DIR)/server2.c $(SERVER_DIR)/server2.h $(SERVER_DIR)/utilsServer.h $(SERVER_DIR)/commands.h awale.h
+# New rule for persistence
+$(SERVER_DIR)/persistance.o: $(SERVER_DIR)/persistance.c $(SERVER_DIR)/persistance.h $(SERVER_DIR)/utilsServer.h
+	$(CC) $(CFLAGS) -c $< -o $@
+
+# Existing rules for server
+$(SERVER_DIR)/server2.o: $(SERVER_DIR)/server2.c $(SERVER_DIR)/server2.h $(SERVER_DIR)/utilsServer.h $(SERVER_DIR)/commands.h $(SERVER_DIR)/persistance.h awale.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 $(SERVER_DIR)/utilsServer.o: $(SERVER_DIR)/utilsServer.c $(SERVER_DIR)/utilsServer.h awale.h
@@ -39,7 +44,7 @@ $(SERVER_DIR)/utilsServer.o: $(SERVER_DIR)/utilsServer.c $(SERVER_DIR)/utilsServ
 $(SERVER_DIR)/commands.o: $(SERVER_DIR)/commands.c $(SERVER_DIR)/commands.h $(SERVER_DIR)/utilsServer.h awale.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Rules for object files -> client
+# Rules for client objects
 $(CLIENT_DIR)/client2.o: $(CLIENT_DIR)/client2.c $(CLIENT_DIR)/client2.h $(CLIENT_DIR)/utilsClient.h $(CLIENT_DIR)/commands.h awale.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
@@ -49,16 +54,16 @@ $(CLIENT_DIR)/commands.o: $(CLIENT_DIR)/commands.c $(CLIENT_DIR)/client2.h $(CLI
 $(CLIENT_DIR)/utilsClient.o: $(CLIENT_DIR)/utilsClient.c $(CLIENT_DIR)/utilsClient.h $(CLIENT_DIR)/commands.h awale.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Rules for object files -> awale
+# Rules for awale objects
 awale.o: awale.c awale.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
 main.o: main.c awale.h
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Clean
 clean:
 	rm -f $(SERVER_DIR)/server $(CLIENT_DIR)/client awale
 	rm -f *.o $(SERVER_DIR)/*.o $(CLIENT_DIR)/*.o
+	rm -f client_data.txt
 
 .PHONY: all clean

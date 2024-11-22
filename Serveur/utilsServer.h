@@ -68,7 +68,7 @@ typedef struct
     int nbBlock;                                 // number of blocked users
     char friend[MAX_CLIENTS][PSEUDO_MAX_LENGTH]; // list of friends
     int nbFriend;                                // number of friends
-    //bool is_connected;                           // true if the client is connected -> for persistance
+    bool is_connected;                           // true if the client is connected -> for persistance
     bool has_pending_request;             // true if this client has a pending request
     char pending_from[PSEUDO_MAX_LENGTH]; // who sent the pending request
 } Client;
@@ -107,7 +107,7 @@ static const char *RESERVED_WORDS[] = {
 // function declarations
 void init(void);
 void end(void);
-int init_connection(int port);
+int init_connection(int port); // server
 void end_connection(int sock);
 void remove_partie(int index, Client *clients);
 Client *findClientByPseudo(Client *clients, int actual, const char *name);

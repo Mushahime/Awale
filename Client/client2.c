@@ -5,7 +5,7 @@
 
 // Global
 char pseudo[PSEUDO_MAX_LENGTH];
-char save[MAX_PARTIES][BUF_SAVE_SIZE + BUF_SIZE];
+char save[MAX_PARTIES][BUF_SAVE_SIZE + BUF_SIZE]; // if could have been in serverside
 int save_count = 0;
 int save_index = 0;
 bool partie_en_cours = false;
@@ -259,7 +259,7 @@ void handle_server_message(SOCKET sock, char *buffer)
     else
     {
         if (strstr(buffer, "already in a challenge") != NULL || 
-            strstr(buffer, "not found") != NULL)
+            strstr(buffer, "not found") != NULL || (strstr(buffer, "Invalid") != NULL))
         {
             waiting_for_response = false;
         }
@@ -371,7 +371,7 @@ void handle_user_input(SOCKET sock)
     case NOT_IMPLEMENTED:
         printf("\033[1;31mNot implemented yet.\033[0m\n");
         printf("\033[1;31m- Tournament\033[0m\n");
-        printf("\033[1;31m- Save disconnected player -> Persistance (see persistance.c)\033[0m\n");
+        printf("\033[1;31m- Save game -> Persistance\033[0m\n");
         printf("\033[1;31m- Secure connection\033[0m\n");
         printf("\033[1;31m- Matchmaking\033[0m\n");
         printf("\033[1;31m- AI for games\033[0m\n");
@@ -445,6 +445,9 @@ void app(const char *address, int port)
 
     write_server(sock, pseudo);
 
+    /*printf("Sent pseudo1: %s\n", pseudo);
+    printf("Server response1: %s\n", buffer);*/
+
     // wait for the server response
     if (read_server(sock, buffer) == -1 || strcmp(buffer, "connected") != 0)
     {
@@ -459,6 +462,9 @@ void app(const char *address, int port)
         close(sock);
         exit(EXIT_FAILURE);
     }
+
+    printf("Sent pseudo: %s\n", pseudo);
+    printf("Server response: %s\n", buffer);
 
     printf("\033[1;32mConnected successfully!\033[0m\n");
     clear_screen_custom2();

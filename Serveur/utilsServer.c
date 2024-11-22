@@ -88,12 +88,13 @@ int read_client(SOCKET sock, char *buffer)
 }
 
 // Function to write to a client
-void write_client(SOCKET sock, const char *buffer)
-{
-    if (send(sock, buffer, strlen(buffer), 0) < 0)
-    {
+void write_client(SOCKET sock, const char *buffer) {
+    if (sock == INVALID_SOCKET) {
+        return;  
+    }
+    if (send(sock, buffer, strlen(buffer), 0) < 0) {
         perror("send()");
-        exit(errno);
+        
     }
 }
 
@@ -139,7 +140,7 @@ void remove_client(Client *clients, int to_remove, int *actual)
         PartieAwale *partie = &awale_parties[clients[to_remove].partie_index];
         bool isSpectator = true;
 
-        // Check if client is a player or spectator
+        // Check if client is player or spectator
         if (strcmp(partie->awale_challenge.challenger, clients[to_remove].name) == 0 ||
             strcmp(partie->awale_challenge.challenged, clients[to_remove].name) == 0)
         {
@@ -148,43 +149,29 @@ void remove_client(Client *clients, int to_remove, int *actual)
 
         if (isSpectator)
         {
-            // Handle spectator leaving (unchanged)
             remove_spec(partie->Spectators, to_remove, partie->nbSpectators, partie);
         }
         else
         {
-            // Handle player disconnection - now with Elo update
             const char *challenger = partie->awale_challenge.challenger;
             const char *challenged = partie->awale_challenge.challenged;
             const char *disconnected = clients[to_remove].name;
             const char *winner = strcmp(disconnected, challenger) == 0 ? challenged : challenger;
 
-            // Find the winner client
-            Client *winner_client = NULL;
+            Client *winner_client = findClientByPseudo(clients, *actual, winner);
             Client *disconnected_client = &clients[to_remove];
-
-            for (int i = 0; i < *actual; i++)
-            {
-                if (strcmp(clients[i].name, winner) == 0)
-                {
-                    winner_client = &clients[i];
-                    break;
-                }
-            }
 
             if (winner_client != NULL)
             {
-                // Update Elo ratings - disconnected player loses
                 update_elo_ratings(winner_client, disconnected_client, false);
 
                 char msg[BUF_SIZE];
                 snprintf(msg, BUF_SIZE, "\nGame over! %s has disconnected. %s wins by forfeit!\n",
                          disconnected, winner);
 
-                // Notify remaining players and spectators
                 for (int i = 0; i < *actual; i++)
                 {
-                    if (i != to_remove && clients[i].partie_index == clients[to_remove].partie_index)
+                    if (clients[i].partie_index == clients[to_remove].partie_index)
                     {
                         write_client(clients[i].sock, msg);
                         clients[i].partie_index = -1;
@@ -201,9 +188,14 @@ void remove_client(Client *clients, int to_remove, int *actual)
         }
     }
 
-    // Move the rest of the clients (unchanged)
-    memmove(clients + to_remove, clients + to_remove + 1, (*actual - to_remove - 1) * sizeof(Client));
-    (*actual)--;
+    // Instead of removing the client, mark as disconnected
+    clients[to_remove].is_connected = false;
+    clients[to_remove].sock = INVALID_SOCKET;
+    clients[to_remove].partie_index = -1;
+    clients[to_remove].has_pending_request = false;
+
+    // Save client state to file
+    save_client_data(clients, *actual);
 }
 
 // Function to remove a spectator from the list
@@ -414,42 +406,46 @@ void clean_invalid_parties(Client *clients, int actual)
 }
 
 // Function to check if a pseudo is valid
-int check_pseudo(Client *clients, int actual, const char *pseudo)
-{
-    // length check
+int check_pseudo(Client *clients, int actual, const char *pseudo) {
+    printf("Checking pseudo %s (length: %zu)\n", pseudo, strlen(pseudo));
+    
+    // Basic length check
     size_t len = strlen(pseudo);
-    if (len < PSEUDO_MIN_LENGTH || len >= PSEUDO_MAX_LENGTH)
-    {
+    if (len < PSEUDO_MIN_LENGTH || len >= PSEUDO_MAX_LENGTH) {
+        printf("Length check failed\n");
         return 0;
     }
 
-    // character check
-    for (size_t i = 0; i < len; i++)
-    {
-        if (!isalnum(pseudo[i]) && (pseudo[i] != '_' || pseudo[i] == ',' || pseudo[i] == ':'))
-        {
+    // Character check
+    for (size_t i = 0; i < len; i++) {
+        if (!isalnum(pseudo[i]) && pseudo[i] != '_') {
+            printf("Character check failed at position %zu\n", i);
             return 0;
         }
     }
 
-    // Check for reserved words
-    for (int i = 0; i < RESERVED_WORDS_COUNT; i++)
-    {
-        if (strstr(pseudo, RESERVED_WORDS[i]) != NULL)
-        {
+    // For existing clients, only check if they're currently connected
+    for (int i = 0; i < actual; i++) {
+        if (strcmp(clients[i].name, pseudo) == 0) {
+            if (clients[i].is_connected) {
+                printf("Client already connected\n");
+                return 0;
+            }
+            // Client exists but not connected - allow reconnection
+            printf("Existing client reconnecting\n");
+            return 1;
+        }
+    }
+
+    // Check if the pseudo is not in the list of RESERVED_WORDS
+    for (int i = 0; i < RESERVED_WORDS_COUNT; i++) {
+        if (strcmp(pseudo, RESERVED_WORDS[i]) == 0) {
+            printf("Pseudo is a reserved word\n");
             return 0;
         }
     }
 
-    // pseudo check
-    for (int i = 0; i < actual; i++)
-    {
-        if (strcasecmp(clients[i].name, pseudo) == 0)
-        { // Case-insensitive comparison
-            return 0;
-        }
-    }
-
+    printf("New client connecting\n");
     return 1;
 }
 
