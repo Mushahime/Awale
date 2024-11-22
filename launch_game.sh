@@ -2,10 +2,10 @@
 
 # Function to check if a port is available
 check_port() {
-    if ! lsof -i :$1 > /dev/null 2>&1; then
-        return 0  # Port is available
+    if ! lsof -i :$1 >/dev/null 2>&1; then
+        return 0 # Port is available
     fi
-    return 1     # Port is in use
+    return 1 # Port is in use
 }
 
 # Function to find next available port
@@ -14,7 +14,7 @@ find_available_port() {
     local max_attempts=5
     local port
 
-    for i in $(seq 0 $((max_attempts-1))); do
+    for i in $(seq 0 $((max_attempts - 1))); do
         port=$((base_port + i))
         if check_port $port; then
             echo $port

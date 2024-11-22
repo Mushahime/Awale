@@ -1,8 +1,8 @@
 #include "utilsServer.h"
 
 // Global
-//pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
-//pthread_mutex_t socket_mutex = PTHREAD_MUTEX_INITIALIZER;
+// pthread_mutex_t clients_mutex = PTHREAD_MUTEX_INITIALIZER;
+// pthread_mutex_t socket_mutex = PTHREAD_MUTEX_INITIALIZER;
 AwaleChallenge awale_challenges[MAX_CHALLENGES];
 int challenge_count = 0;
 PartieAwale awale_parties[MAX_PARTIES];
@@ -29,8 +29,8 @@ void init(void)
 // Function to end the program
 void end(void)
 {
-    //pthread_mutex_destroy(&clients_mutex);
-    //pthread_mutex_destroy(&socket_mutex);
+    // pthread_mutex_destroy(&clients_mutex);
+    // pthread_mutex_destroy(&socket_mutex);
 #ifdef WIN32
     WSACleanup();
 #endif
@@ -132,21 +132,27 @@ void clear_clients(Client *clients, int actual)
 }
 
 // Function to remove a client from the list
-void remove_client(Client *clients, int to_remove, int *actual) {
-    if (clients[to_remove].partie_index != -1) {
+void remove_client(Client *clients, int to_remove, int *actual)
+{
+    if (clients[to_remove].partie_index != -1)
+    {
         PartieAwale *partie = &awale_parties[clients[to_remove].partie_index];
         bool isSpectator = true;
-        
+
         // Check if client is a player or spectator
         if (strcmp(partie->awale_challenge.challenger, clients[to_remove].name) == 0 ||
-            strcmp(partie->awale_challenge.challenged, clients[to_remove].name) == 0) {
+            strcmp(partie->awale_challenge.challenged, clients[to_remove].name) == 0)
+        {
             isSpectator = false;
         }
 
-        if (isSpectator) {
+        if (isSpectator)
+        {
             // Handle spectator leaving (unchanged)
             remove_spec(partie->Spectators, to_remove, partie->nbSpectators, partie);
-        } else {
+        }
+        else
+        {
             // Handle player disconnection - now with Elo update
             const char *challenger = partie->awale_challenge.challenger;
             const char *challenged = partie->awale_challenge.challenged;
@@ -157,24 +163,29 @@ void remove_client(Client *clients, int to_remove, int *actual) {
             Client *winner_client = NULL;
             Client *disconnected_client = &clients[to_remove];
 
-            for (int i = 0; i < *actual; i++) {
-                if (strcmp(clients[i].name, winner) == 0) {
+            for (int i = 0; i < *actual; i++)
+            {
+                if (strcmp(clients[i].name, winner) == 0)
+                {
                     winner_client = &clients[i];
                     break;
                 }
             }
 
-            if (winner_client != NULL) {
+            if (winner_client != NULL)
+            {
                 // Update Elo ratings - disconnected player loses
                 update_elo_ratings(winner_client, disconnected_client, false);
 
                 char msg[BUF_SIZE];
-                snprintf(msg, BUF_SIZE, "\nGame over! %s has disconnected. %s wins by forfeit!\n", 
-                        disconnected, winner);
-                
+                snprintf(msg, BUF_SIZE, "\nGame over! %s has disconnected. %s wins by forfeit!\n",
+                         disconnected, winner);
+
                 // Notify remaining players and spectators
-                for (int i = 0; i < *actual; i++) {
-                    if (i != to_remove && clients[i].partie_index == clients[to_remove].partie_index) {
+                for (int i = 0; i < *actual; i++)
+                {
+                    if (i != to_remove && clients[i].partie_index == clients[to_remove].partie_index)
+                    {
                         write_client(clients[i].sock, msg);
                         clients[i].partie_index = -1;
                     }
@@ -182,7 +193,8 @@ void remove_client(Client *clients, int to_remove, int *actual) {
             }
 
             int challenge_index = find_challenge(clients[to_remove].name);
-            if (challenge_index != -1) {
+            if (challenge_index != -1)
+            {
                 remove_challenge(challenge_index);
             }
             remove_partie(clients[to_remove].partie_index, clients);
@@ -255,17 +267,21 @@ Client *findClientByPseudo(Client *clients, int actual, const char *name)
     return NULL;
 }
 
-void update_elo_ratings(Client *winner, Client *loser, bool isDraw) {
+void update_elo_ratings(Client *winner, Client *loser, bool isDraw)
+{
     int facteur = 32;
     float part_of_calcul_loser = (float)(winner->point - loser->point) / 400;
     float part_of_calcul_winner = (float)(loser->point - winner->point) / 400;
-    float p_vict_winner = 1/(1+pow(10, part_of_calcul_winner));
-    float p_vict_loser = 1/(1+pow(10, part_of_calcul_loser));
+    float p_vict_winner = 1 / (1 + pow(10, part_of_calcul_winner));
+    float p_vict_loser = 1 / (1 + pow(10, part_of_calcul_loser));
 
-    if (isDraw) {
+    if (isDraw)
+    {
         winner->point += facteur * (0.5 - p_vict_winner);
         loser->point += facteur * (0.5 - p_vict_loser);
-    } else {
+    }
+    else
+    {
         winner->point += facteur * (1 - p_vict_winner);
         loser->point += facteur * (0 - p_vict_loser);
     }
@@ -275,18 +291,23 @@ void update_elo_ratings(Client *winner, Client *loser, bool isDraw) {
 int find_challenge(const char *name)
 {
     // check if the player is a challenger or challenged in a challenge
-    for (int i = 0; i < challenge_count; i++) {
+    for (int i = 0; i < challenge_count; i++)
+    {
         if (strcmp(awale_challenges[i].challenger, name) == 0 ||
-            strcmp(awale_challenges[i].challenged, name) == 0) {
+            strcmp(awale_challenges[i].challenged, name) == 0)
+        {
             return i;
         }
     }
 
     // check if the player is a spectator in a game
-    for (int i = 0; i < partie_count; i++) {
+    for (int i = 0; i < partie_count; i++)
+    {
         PartieAwale *partie = &awale_parties[i];
-        for (int j = 0; j < partie->nbSpectators; j++) {
-            if (strcmp(partie->Spectators[j].name, name) == 0) {
+        for (int j = 0; j < partie->nbSpectators; j++)
+        {
+            if (strcmp(partie->Spectators[j].name, name) == 0)
+            {
                 return i;
             }
         }
@@ -316,7 +337,7 @@ void add_challenge(const char *challenger, const char *challenged, const char *m
             awale_challenges[challenge_count].private_spec[0][0] = '\0';
             awale_challenges[challenge_count].private_spec_count = 0;
         }
-        
+
         if (strcmp(prive, "yes") == 0)
         {
             awale_challenges[challenge_count].prive = true;
@@ -331,7 +352,6 @@ void add_challenge(const char *challenger, const char *challenged, const char *m
                 awale_challenges[challenge_count].private_spec_count++;
                 private_spec = strtok(NULL, ":");
             }
-
         }
         else
         {
@@ -363,7 +383,7 @@ void clean_invalid_parties(Client *clients, int actual)
         bool challenger_present = false;
         bool challenged_present = false;
         PartieAwale *partie = &awale_parties[i];
-        
+
         for (int j = 0; j < actual; j++)
         {
             if (strcmp(clients[j].name, partie->awale_challenge.challenger) == 0)
@@ -385,7 +405,7 @@ void clean_invalid_parties(Client *clients, int actual)
                 }
             }
         }
-        
+
         if (!challenger_present || !challenged_present)
         {
             remove_partie(i, clients);
@@ -404,15 +424,19 @@ int check_pseudo(Client *clients, int actual, const char *pseudo)
     }
 
     // character check
-    for (size_t i = 0; i < len; i++) {
-        if (!isalnum(pseudo[i]) && (pseudo[i] != '_' || pseudo[i] == ',' || pseudo[i] == ':')) {
+    for (size_t i = 0; i < len; i++)
+    {
+        if (!isalnum(pseudo[i]) && (pseudo[i] != '_' || pseudo[i] == ',' || pseudo[i] == ':'))
+        {
             return 0;
         }
     }
 
     // Check for reserved words
-    for (int i = 0; i < RESERVED_WORDS_COUNT; i++) {
-        if (strstr(pseudo, RESERVED_WORDS[i]) != NULL) {
+    for (int i = 0; i < RESERVED_WORDS_COUNT; i++)
+    {
+        if (strstr(pseudo, RESERVED_WORDS[i]) != NULL)
+        {
             return 0;
         }
     }
@@ -430,41 +454,50 @@ int check_pseudo(Client *clients, int actual, const char *pseudo)
 }
 
 // function to check if a challenge is expired
-void check_challenge_timeouts(Client *clients, int actual) {
+void check_challenge_timeouts(Client *clients, int actual)
+{
     time_t current_time = time(NULL);
-    
-    for (int i = challenge_count - 1; i >= 0; i--) {
+
+    for (int i = challenge_count - 1; i >= 0; i--)
+    {
         AwaleChallenge *challenge = &awale_challenges[i];
         Client *challenger = NULL;
         Client *challenged = NULL;
 
         // Find both players
-        for (int j = 0; j < actual; j++) {
-            if (strcmp(clients[j].name, challenge->challenger) == 0) {
+        for (int j = 0; j < actual; j++)
+        {
+            if (strcmp(clients[j].name, challenge->challenger) == 0)
+            {
                 challenger = &clients[j];
             }
-            if (strcmp(clients[j].name, challenge->challenged) == 0) {
+            if (strcmp(clients[j].name, challenge->challenged) == 0)
+            {
                 challenged = &clients[j];
             }
-            if (challenger && challenged) break;
+            if (challenger && challenged)
+                break;
         }
 
         // Check if game is not already started (partie_index == -1)
-        if ((challenger && challenger->partie_index == -1) && 
+        if ((challenger && challenger->partie_index == -1) &&
             (challenged && challenged->partie_index == -1) &&
-            (current_time - challenge->challenge_time > 60)) {
-            
-            if (challenger) {
+            (current_time - challenge->challenge_time > 60))
+        {
+
+            if (challenger)
+            {
                 char msg[BUF_SIZE];
-                snprintf(msg, BUF_SIZE, "Challenge to %s has expired (no response within 1 minute)\n", 
-                        challenge->challenged);
+                snprintf(msg, BUF_SIZE, "Challenge to %s has expired (no response within 1 minute)\n",
+                         challenge->challenged);
                 write_client(challenger->sock, msg);
             }
-            
-            if (challenged && strcmp(challenger->name, challenged->name) != 0) {
+
+            if (challenged && strcmp(challenger->name, challenged->name) != 0)
+            {
                 char msg[BUF_SIZE];
                 snprintf(msg, BUF_SIZE, "Challenge from %s has expired\n",
-                        challenge->challenger);
+                         challenge->challenger);
                 write_client(challenged->sock, msg);
             }
 
@@ -474,11 +507,16 @@ void check_challenge_timeouts(Client *clients, int actual) {
 }
 
 // function to check if a pseudo is blocked
-bool is_blocked_by(Client *clients, int actual, const char *sender, const char *recipient) {
-    for (int i = 0; i < actual; i++) {
-        if (strcmp(clients[i].name, recipient) == 0) {
-            for (int j = 0; j < clients[i].nbBlock; j++) {
-                if (strcmp(clients[i].block[j], sender) == 0) {
+bool is_blocked_by(Client *clients, int actual, const char *sender, const char *recipient)
+{
+    for (int i = 0; i < actual; i++)
+    {
+        if (strcmp(clients[i].name, recipient) == 0)
+        {
+            for (int j = 0; j < clients[i].nbBlock; j++)
+            {
+                if (strcmp(clients[i].block[j], sender) == 0)
+                {
                     return true;
                 }
             }
@@ -487,7 +525,6 @@ bool is_blocked_by(Client *clients, int actual, const char *sender, const char *
     }
     return false;
 }
-
 
 /*Client *findClientIndexByPseudo(Client *clients, int actual, const char *name)
 {

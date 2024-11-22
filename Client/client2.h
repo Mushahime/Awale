@@ -38,7 +38,7 @@ typedef struct in_addr IN_ADDR;
 #else
 #error not defined for this platform
 #endif
-#define CRLF     "\r\n"
+#define CRLF "\r\n"
 #define BUF_SIZE 1024
 #define BUF_SAVE_SIZE 3000
 #define MAX_BIO_LENGTH 1000
@@ -67,7 +67,7 @@ typedef enum
 // Global
 extern char pseudo[PSEUDO_MAX_LENGTH];
 extern bool partie_en_cours;
-extern char save[MAX_PARTIES][BUF_SAVE_SIZE+BUF_SIZE];
+extern char save[MAX_PARTIES][BUF_SAVE_SIZE + BUF_SIZE];
 extern int save_count;
 extern int save_index;
 extern bool waiting_for_response;

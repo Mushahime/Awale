@@ -31,7 +31,7 @@
 #error not defined for this platform
 #endif
 
-//Function declarations
+// Function declarations
 void list_connected_clients(Client *clients, int actual, int requester_index); // <=> handle_list_users
 void handle_awale_response(Client *clients, int actual, int client_index, const char *response);
 void handle_awale_challenge(Client *clients, int actual, int client_index, char *target_pseudo);
@@ -49,6 +49,5 @@ void handle_friend(Client *clients, int actual, int client_index, const char *bu
 void handle_unfriend(Client *clients, int actual, int client_index, const char *buffer);
 void handle_list_friend(Client *clients, int actual, int client_index);
 void handle_friend_response(Client *clients, int actual, int client_index, const char *buffer);
-
 
 #endif

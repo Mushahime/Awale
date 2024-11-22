@@ -33,7 +33,7 @@
 #define BUF_SAVE_SIZE 3000
 #define MUTEX_TIMEOUT_SEC 10
 #define RESERVED_WORDS_COUNT 18
-#define _GNU_SOURCE  // For strcasestr
+#define _GNU_SOURCE // For strcasestr
 
 // Typedefs
 typedef int SOCKET;
@@ -44,45 +44,45 @@ typedef struct in_addr IN_ADDR;
 // Specific struct
 
 // Structure to store a challenge (substrucutre of PartieAwale)
-typedef struct {
-    char challenger[PSEUDO_MAX_LENGTH]; // pseudo of the challenger
-    char challenged[PSEUDO_MAX_LENGTH]; // pseudo of the challenged
-    bool prive; // true if private challenge
+typedef struct
+{
+    char challenger[PSEUDO_MAX_LENGTH];                // pseudo of the challenger
+    char challenged[PSEUDO_MAX_LENGTH];                // pseudo of the challenged
+    bool prive;                                        // true if private challenge
     char private_spec[MAX_CLIENTS][PSEUDO_MAX_LENGTH]; // private spectators (who is allowed to see the game)
-    int private_spec_count; // count of private spectators
-    time_t challenge_time; // time of the challenge
+    int private_spec_count;                            // count of private spectators
+    time_t challenge_time;                             // time of the challenge
 } AwaleChallenge;
 
-
 // Structure to store client data
-typedef struct {
+typedef struct
+{
     SOCKET sock;
-    char name[BUF_SIZE]; // pseudo
-    char bio[MAX_BIO_LENGTH]; // (for bio)
-    int has_bio; //  (for knowing if bio is set)
-    int partie_index; // -1 if not in a game
-    int point; //(for ranking)
-    char block[MAX_CLIENTS][PSEUDO_MAX_LENGTH]; // list of blocked users
-    int nbBlock; // number of blocked users
+    char name[BUF_SIZE];                         // pseudo
+    char bio[MAX_BIO_LENGTH];                    // (for bio)
+    int has_bio;                                 //  (for knowing if bio is set)
+    int partie_index;                            // -1 if not in a game
+    int point;                                   //(for ranking)
+    char block[MAX_CLIENTS][PSEUDO_MAX_LENGTH];  // list of blocked users
+    int nbBlock;                                 // number of blocked users
     char friend[MAX_CLIENTS][PSEUDO_MAX_LENGTH]; // list of friends
-    int nbFriend; // number of friends
-    
-    bool has_pending_request;  // true if this client has a pending request
-    char pending_from[PSEUDO_MAX_LENGTH];  // who sent the pending request
+    int nbFriend;                                // number of friends
+
+    bool has_pending_request;             // true if this client has a pending request
+    char pending_from[PSEUDO_MAX_LENGTH]; // who sent the pending request
 } Client;
 
-
-
 // Structure to store a game
-typedef struct {
+typedef struct
+{
     AwaleChallenge awale_challenge; // instance of the challenge
-    JeuAwale jeu; // instance of the game
-    int tour; // to know who's turn it is
+    JeuAwale jeu;                   // instance of the game
+    int tour;                       // to know who's turn it is
     Client Spectators[MAX_CLIENTS]; // spectators in the game
-    int nbSpectators;// number of spectators
-    char cout[BUF_SAVE_SIZE]; // save of the game
-    int cout_index; // index of the save
-    bool in_save; // if the game is saved to know if we can join (for spectators)
+    int nbSpectators;               // number of spectators
+    char cout[BUF_SAVE_SIZE];       // save of the game
+    int cout_index;                 // index of the save
+    bool in_save;                   // if the game is saved to know if we can join (for spectators)
 } PartieAwale;
 
 #else
@@ -90,19 +90,18 @@ typedef struct {
 #endif
 
 // Global
-//extern pthread_mutex_t clients_mutex; //useless its asynchrone
-//extern pthread_mutex_t socket_mutex;
+// extern pthread_mutex_t clients_mutex; //useless its asynchrone
+// extern pthread_mutex_t socket_mutex;
 extern AwaleChallenge awale_challenges[MAX_CHALLENGES];
 extern int challenge_count;
 extern PartieAwale awale_parties[MAX_PARTIES];
-extern int partie_count; 
+extern int partie_count;
 
 static const char *RESERVED_WORDS[] = {
     "Private", "Public", "Challenge", "AWALE", "ERROR", "FAIL",
     "fight", "Spectator", "over", "expired", "spectating",
     "Friend", "declined", "score", "list", "save", "quit",
-    "connected"
-};
+    "connected"};
 
 // function declarations
 void init(void);

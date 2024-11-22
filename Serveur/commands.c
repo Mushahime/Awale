@@ -46,31 +46,38 @@ void handle_bio_command(Client *clients, int actual, int client_index, const cha
 }
 
 // In commands.c - Updated handle_quit_game function
-void handle_quit_game(Client *clients, int actual, int client_index) {
-    if (clients[client_index].partie_index != -1) {
+void handle_quit_game(Client *clients, int actual, int client_index)
+{
+    if (clients[client_index].partie_index != -1)
+    {
         int partie_index = clients[client_index].partie_index;
         PartieAwale *partie = &awale_parties[partie_index];
         bool isSpectator = true;
-        
+
         // Check if client is a player or spectator
         if (strcmp(partie->awale_challenge.challenger, clients[client_index].name) == 0 ||
-            strcmp(partie->awale_challenge.challenged, clients[client_index].name) == 0) {
+            strcmp(partie->awale_challenge.challenged, clients[client_index].name) == 0)
+        {
             isSpectator = false;
         }
 
-        if (isSpectator) {
+        if (isSpectator)
+        {
             // Handle spectator leaving (unchanged)
-            for (int i = 0; i < partie->nbSpectators; i++) {
-                if (strcmp(partie->Spectators[i].name, clients[client_index].name) == 0) {
-                    memmove(&partie->Spectators[i], &partie->Spectators[i + 1], 
+            for (int i = 0; i < partie->nbSpectators; i++)
+            {
+                if (strcmp(partie->Spectators[i].name, clients[client_index].name) == 0)
+                {
+                    memmove(&partie->Spectators[i], &partie->Spectators[i + 1],
                             (partie->nbSpectators - i - 1) * sizeof(Client));
                     partie->nbSpectators--;
                     break;
                 }
             }
             clients[client_index].partie_index = -1;
-            
-        } else {
+        }
+        else
+        {
             // Handle player leaving - now with Elo update
             const char *challenger = partie->awale_challenge.challenger;
             const char *challenged = partie->awale_challenge.challenged;
@@ -81,24 +88,29 @@ void handle_quit_game(Client *clients, int actual, int client_index) {
             Client *winner_client = NULL;
             Client *quitter_client = &clients[client_index];
 
-            for (int i = 0; i < actual; i++) {
-                if (strcmp(clients[i].name, winner) == 0) {
+            for (int i = 0; i < actual; i++)
+            {
+                if (strcmp(clients[i].name, winner) == 0)
+                {
                     winner_client = &clients[i];
                     break;
                 }
             }
 
-            if (winner_client != NULL) {
+            if (winner_client != NULL)
+            {
                 // Update Elo ratings - quitter loses
                 update_elo_ratings(winner_client, quitter_client, false);
 
                 char msg[BUF_SIZE];
-                snprintf(msg, BUF_SIZE, "\nGame over! %s has left the game. %s wins by forfeit!\n", 
-                        quitter, winner);
-                
+                snprintf(msg, BUF_SIZE, "\nGame over! %s has left the game. %s wins by forfeit!\n",
+                         quitter, winner);
+
                 // Notify all players and spectators
-                for (int i = 0; i < actual; i++) {
-                    if (clients[i].partie_index == partie_index) {
+                for (int i = 0; i < actual; i++)
+                {
+                    if (clients[i].partie_index == partie_index)
+                    {
                         write_client(clients[i].sock, msg);
                         clients[i].partie_index = -1;
                     }
@@ -106,7 +118,8 @@ void handle_quit_game(Client *clients, int actual, int client_index) {
             }
 
             int challenge_index = find_challenge(clients[client_index].name);
-            if (challenge_index != -1) {
+            if (challenge_index != -1)
+            {
                 remove_challenge(challenge_index);
             }
             remove_partie(partie_index, clients);
@@ -114,7 +127,7 @@ void handle_quit_game(Client *clients, int actual, int client_index) {
     }
 }
 
-//function to react after the response of a challenged player
+// function to react after the response of a challenged player
 void handle_awale_response(Client *clients, int actual, int client_index, const char *response)
 {
     int challenge_index = find_challenge(clients[client_index].name);
@@ -169,7 +182,7 @@ void handle_awale_response(Client *clients, int actual, int client_index, const 
         char plateau_initial[BUF_SIZE] = {0};
         int offset = 0;
         offset += snprintf(plateau_initial, BUF_SIZE, "AWALE:");
-        
+
         for (int i = 0; i < TAILLE_PLATEAU; i++)
         {
             offset += snprintf(plateau_initial + offset, BUF_SIZE - offset, "%d:", nouvelle_partie.jeu.plateau[i]);
@@ -179,22 +192,22 @@ void handle_awale_response(Client *clients, int actual, int client_index, const 
         if (nouvelle_partie.tour == 1)
         {
             offset += snprintf(plateau_initial + offset, BUF_SIZE - offset, "%s:%d",
-                             challenger, nouvelle_partie.tour);
+                               challenger, nouvelle_partie.tour);
             if (nouvelle_partie.cout_index <= BUF_SAVE_SIZE - 1)
             {
                 snprintf(nouvelle_partie.cout, BUF_SAVE_SIZE, "%s:%s:%d",
-                        challenger, challenged, nouvelle_partie.tour);
+                         challenger, challenged, nouvelle_partie.tour);
                 nouvelle_partie.cout_index = strlen(nouvelle_partie.cout);
             }
         }
         else
         {
             offset += snprintf(plateau_initial + offset, BUF_SIZE - offset, "%s:%d",
-                             challenged, nouvelle_partie.tour);
+                               challenged, nouvelle_partie.tour);
             if (nouvelle_partie.cout_index <= BUF_SAVE_SIZE - 1)
             {
                 snprintf(nouvelle_partie.cout, BUF_SAVE_SIZE, "%s:%s:%d",
-                        challenger, challenged, nouvelle_partie.tour);
+                         challenger, challenged, nouvelle_partie.tour);
                 nouvelle_partie.cout_index = strlen(nouvelle_partie.cout);
             }
         }
@@ -205,7 +218,7 @@ void handle_awale_response(Client *clients, int actual, int client_index, const 
 
         // Add the scores
         offset += snprintf(plateau_initial + offset, BUF_SIZE - offset, ":%d:%d",
-                         nouvelle_partie.jeu.score_joueur1, nouvelle_partie.jeu.score_joueur2);
+                           nouvelle_partie.jeu.score_joueur1, nouvelle_partie.jeu.score_joueur2);
 
         // Send the initial board state to the players
         for (int i = 0; i < actual; i++)
@@ -222,7 +235,6 @@ void handle_awale_response(Client *clients, int actual, int client_index, const 
                 write_client(clients[i].sock, plateau_initial);
             }
         }
-
     }
     else
     {
@@ -245,29 +257,35 @@ void handle_awale_challenge(Client *clients, int actual, int client_index, char 
 {
     printf("Partie count : %d\n", partie_count);
     printf("Challenge count : %d\n", challenge_count);
-    
-    if (find_challenge(clients[client_index].name) != -1) {
+
+    if (find_challenge(clients[client_index].name) != -1)
+    {
         write_client(clients[client_index].sock, "You already have a pending challenge.\n");
         return;
     }
 
-    char * target_pseudo = strtok(buffer, ":");
-    char * message_rest = strtok(NULL, "");
+    char *target_pseudo = strtok(buffer, ":");
+    char *message_rest = strtok(NULL, "");
 
-    if (target_pseudo == NULL || message_rest == NULL) {
+    if (target_pseudo == NULL || message_rest == NULL)
+    {
         write_client(clients[client_index].sock, "Invalid challenge format.\n");
         return;
     }
 
     int found = 0;
-    for (int i = 0; i < actual; i++) {
-        if (strcmp(clients[i].name, target_pseudo) == 0) {
-            if (is_blocked_by(clients, actual, clients[client_index].name, target_pseudo)) {
+    for (int i = 0; i < actual; i++)
+    {
+        if (strcmp(clients[i].name, target_pseudo) == 0)
+        {
+            if (is_blocked_by(clients, actual, clients[client_index].name, target_pseudo))
+            {
                 write_client(clients[client_index].sock, "Cannot send challenge - you are blocked by this user.\n");
                 return;
             }
 
-            if (find_challenge(target_pseudo) != -1) {
+            if (find_challenge(target_pseudo) != -1)
+            {
                 char response[BUF_SIZE];
                 snprintf(response, BUF_SIZE, "Player %s is already in a challenge.\n", target_pseudo);
                 write_client(clients[client_index].sock, response);
@@ -285,7 +303,8 @@ void handle_awale_challenge(Client *clients, int actual, int client_index, char 
         }
     }
 
-    if (!found) {
+    if (!found)
+    {
         char response[BUF_SIZE];
         snprintf(response, BUF_SIZE, "User %s not found.\n", target_pseudo);
         write_client(clients[client_index].sock, response);
@@ -321,7 +340,7 @@ void handle_awale_move(Client *clients, int actual, int client_index, const char
     bool coup_valide = jouer_coup(jeu, joueur, case_depart);
 
     if (coup_valide)
-    {   
+    {
 
         // Update of save
         if (partie->cout_index <= BUF_SAVE_SIZE - 1)
@@ -347,7 +366,6 @@ void handle_awale_move(Client *clients, int actual, int client_index, const char
         }
         printf("Debug - Cout : %s\n", partie->cout); // Debug
 
-
         // Update the tour
         partie->tour = (joueur == 1) ? 2 : 1;
 
@@ -358,14 +376,13 @@ void handle_awale_move(Client *clients, int actual, int client_index, const char
             if (jeu->score_joueur1 == jeu->score_joueur2)
             {
                 snprintf(end_msg, BUF_SIZE, "Game over! It's a draw! Final score: %d-%d\n",
-                        jeu->score_joueur1, jeu->score_joueur2);
+                         jeu->score_joueur1, jeu->score_joueur2);
             }
             else
             {
                 snprintf(end_msg, BUF_SIZE, "Game over! %s wins with a score of %d-%d!\n",
-                        (jeu->score_joueur1 > jeu->score_joueur2) ? 
-                        partie->awale_challenge.challenger : partie->awale_challenge.challenged,
-                        jeu->score_joueur1, jeu->score_joueur2);
+                         (jeu->score_joueur1 > jeu->score_joueur2) ? partie->awale_challenge.challenger : partie->awale_challenge.challenged,
+                         jeu->score_joueur1, jeu->score_joueur2);
             }
 
             // Send the end message to the players
@@ -374,7 +391,7 @@ void handle_awale_move(Client *clients, int actual, int client_index, const char
                 if (strcmp(clients[i].name, partie->awale_challenge.challenger) == 0 ||
                     strcmp(clients[i].name, partie->awale_challenge.challenged) == 0)
                 {
-                    //clients[i].partie_index = -1;
+                    // clients[i].partie_index = -1;
                     write_client(clients[i].sock, end_msg);
                 }
             }
@@ -387,8 +404,8 @@ void handle_awale_move(Client *clients, int actual, int client_index, const char
                 write_client(partie->Spectators[i].sock, end_msg_spectator);
             }
 
-            Client * challenger = findClientByPseudo(clients, actual, partie->awale_challenge.challenger);
-            Client * challenged = findClientByPseudo(clients, actual, partie->awale_challenge.challenged);
+            Client *challenger = findClientByPseudo(clients, actual, partie->awale_challenge.challenger);
+            Client *challenged = findClientByPseudo(clients, actual, partie->awale_challenge.challenged);
 
             int facteur = 32;
 
@@ -396,27 +413,27 @@ void handle_awale_move(Client *clients, int actual, int client_index, const char
             int classement_challenged = challenged->point;
 
             // Update of the ranking (we could have used the function update_elo_ratings)
-            float part_of_calcul_challenged = (float) (classement_challenger - classement_challenged) / 400;
-            float part_of_calcul_challenger = (float) (classement_challenged - classement_challenger) / 400;
-            float p_vict_challenger = 1/(1+pow(10, part_of_calcul_challenger));
-            float p_vict_challenged = 1/(1+pow(10, part_of_calcul_challenged));
+            float part_of_calcul_challenged = (float)(classement_challenger - classement_challenged) / 400;
+            float part_of_calcul_challenger = (float)(classement_challenged - classement_challenger) / 400;
+            float p_vict_challenger = 1 / (1 + pow(10, part_of_calcul_challenger));
+            float p_vict_challenged = 1 / (1 + pow(10, part_of_calcul_challenged));
             printf("ratio challenger : %f\n", p_vict_challenger);
             printf("ratio challenged : %f\n", p_vict_challenged);
 
             if (jeu->score_joueur1 == jeu->score_joueur2)
             {
-                challenger->point += facteur*(0.5-p_vict_challenger);
-                challenged->point += facteur*(0.5-p_vict_challenged);
+                challenger->point += facteur * (0.5 - p_vict_challenger);
+                challenged->point += facteur * (0.5 - p_vict_challenged);
             }
             else if (jeu->score_joueur1 > jeu->score_joueur2)
             {
-                challenger->point += facteur*(1-p_vict_challenger);
-                challenged->point += facteur*(0-p_vict_challenged);
+                challenger->point += facteur * (1 - p_vict_challenger);
+                challenged->point += facteur * (0 - p_vict_challenged);
             }
             else
             {
-                challenger->point += facteur*(0-p_vict_challenger);
-                challenged->point += facteur*(1-p_vict_challenged);
+                challenger->point += facteur * (0 - p_vict_challenger);
+                challenged->point += facteur * (1 - p_vict_challenged);
             }
 
             // In_save
@@ -490,11 +507,11 @@ void handle_save(Client *clients, int actual, int client_index, const char *buff
     }
 
     PartieAwale *partie = &awale_parties[partie_index];
-    
+
     // Find the players in the game
     Client *challenger = findClientByPseudo(clients, actual, partie->awale_challenge.challenger);
     Client *challenged = findClientByPseudo(clients, actual, partie->awale_challenge.challenged);
-    
+
     if (!challenger || !challenged)
     {
         free(save);
@@ -551,9 +568,12 @@ void handle_private_message(Client *clients, int actual, int sender_index, const
 
     strncpy(message, msg_start + 1, BUF_SIZE - 1);
 
-    for (int i = 0; i < actual; i++) {
-        if (strcmp(clients[i].name, target_pseudo) == 0) {
-            if (!is_blocked_by(clients, actual, clients[sender_index].name, target_pseudo)) {
+    for (int i = 0; i < actual; i++)
+    {
+        if (strcmp(clients[i].name, target_pseudo) == 0)
+        {
+            if (!is_blocked_by(clients, actual, clients[sender_index].name, target_pseudo))
+            {
                 char formatted_msg[BUF_SIZE];
                 snprintf(formatted_msg, BUF_SIZE, "[Private from %s]: %s\n\n",
                          clients[sender_index].name, message);
@@ -594,10 +614,10 @@ void list_connected_clients(Client *clients, int actual, int requester_index)
 // Function who try to accept a spectator in a "game" if the game exists and is not full/private
 void handle_spec(Client *clients, int actual, int client_index, const char *buffer)
 {
-    printf("buffer: %s\n", buffer); //pseudo
+    printf("buffer: %s\n", buffer); // pseudo
 
     // Find the game
-    Client * player = findClientByPseudo(clients, actual, buffer);
+    Client *player = findClientByPseudo(clients, actual, buffer);
     if (player == NULL)
     {
         write_client(clients[client_index].sock, "FAIL:This player doesnt exist\n");
@@ -610,14 +630,14 @@ void handle_spec(Client *clients, int actual, int client_index, const char *buff
         return;
     }
 
-    PartieAwale * partie = &awale_parties[player->partie_index];
+    PartieAwale *partie = &awale_parties[player->partie_index];
     if (partie == NULL || partie->nbSpectators >= MAX_CLIENTS || partie->in_save)
     {
         write_client(clients[client_index].sock, "FAIL:Cannot spectate this game (doesnt exist, not ready or forbidden)\n");
         return;
     }
 
-    AwaleChallenge * challenge = &partie->awale_challenge;
+    AwaleChallenge *challenge = &partie->awale_challenge;
     bool is_private = challenge->prive;
     bool is_in_private_spec = false;
 
@@ -643,17 +663,15 @@ void handle_spec(Client *clients, int actual, int client_index, const char *buff
         return;
     }
 
-
     // Add the client to the spectators
     partie->Spectators[partie->nbSpectators] = clients[client_index];
     partie->nbSpectators++;
-    
+
     // Update the client
     clients[client_index].partie_index = player->partie_index;
-    
+
     write_client(clients[client_index].sock, "You are now spectating this game\n");
     sleep(1);
-    
 
     // Send the initial board state to the spectator
     char plateau_updated[BUF_SIZE] = {0};
@@ -673,17 +691,17 @@ void handle_spec(Client *clients, int actual, int client_index, const char *buff
         offset += snprintf(plateau_updated + offset, BUF_SIZE - offset, "%s:%d",
                            partie->awale_challenge.challenged, partie->tour);
     }
-   
+
     offset += snprintf(plateau_updated + offset, BUF_SIZE - offset, ":%d:%d",
                        partie->jeu.score_joueur1, partie->jeu.score_joueur2);
-    
+
     write_client(clients[client_index].sock, plateau_updated);
 }
 
 // Function to list all games in progress
 void handle_awale_list(Client *clients, int actual, int client_index)
 {
-    //clean_invalid_parties(clients, actual);
+    // clean_invalid_parties(clients, actual);
     char list[BUF_SIZE * MAX_PARTIES] = "Games in progress:\n";
 
     printf("partie_count cote awale list: %d\n", partie_count);
@@ -710,7 +728,7 @@ void handle_list_blocked(Client *clients, int actual, int client_index)
 {
     char list[BUF_SIZE * MAX_CLIENTS] = "Blocked users:\n";
 
-    for (int i=0; i<clients[client_index].nbBlock; i++)
+    for (int i = 0; i < clients[client_index].nbBlock; i++)
     {
         char user_entry[BUF_SIZE];
         snprintf(user_entry, BUF_SIZE, "- %s\n", clients[client_index].block[i]);
@@ -728,7 +746,7 @@ void handle_list_blocked(Client *clients, int actual, int client_index)
 // Function to block a player
 void handle_block(Client *clients, int actual, int client_index, const char *buffer)
 {
-    
+
     char target_pseudo[BUF_SIZE];
     strncpy(target_pseudo, buffer, BUF_SIZE - 1);
     target_pseudo[BUF_SIZE - 1] = '\0';
@@ -753,7 +771,7 @@ void handle_block(Client *clients, int actual, int client_index, const char *buf
             }
 
             strncpy(clients[client_index].block[clients[client_index].nbBlock], target_pseudo, PSEUDO_MAX_LENGTH - 1);
-            
+
             clients[client_index].block[clients[client_index].nbBlock][PSEUDO_MAX_LENGTH - 1] = '\0'; // Ensure null termination
             clients[client_index].nbBlock++;
             write_client(clients[client_index].sock, "Player blocked successfully.\n");
@@ -791,7 +809,7 @@ void handle_list_friend(Client *clients, int actual, int client_index)
 {
     char list[BUF_SIZE * MAX_CLIENTS] = "Friends:\n";
 
-    for (int i=0; i<clients[client_index].nbFriend; i++)
+    for (int i = 0; i < clients[client_index].nbFriend; i++)
     {
         char user_entry[BUF_SIZE];
         snprintf(user_entry, BUF_SIZE, "- %s\n", clients[client_index].friend[i]);
@@ -805,7 +823,6 @@ void handle_list_friend(Client *clients, int actual, int client_index)
 
     write_client(clients[client_index].sock, list);
 }
-
 
 // Function to handle a friend request response
 void handle_unfriend(Client *clients, int actual, int client_index, const char *buffer)
@@ -854,42 +871,52 @@ void handle_unfriend(Client *clients, int actual, int client_index, const char *
         }
     }
 
-    if (!is_friend){
+    if (!is_friend)
+    {
         write_client(clients[client_index].sock, "Player not found in friends list.\n");
     }
 }
 
 // Function de add a friend
-void handle_friend(Client *clients, int actual, int client_index, const char *buffer) {
+void handle_friend(Client *clients, int actual, int client_index, const char *buffer)
+{
     char target_pseudo[BUF_SIZE];
     strncpy(target_pseudo, buffer + 1, BUF_SIZE - 1);
     target_pseudo[BUF_SIZE - 1] = '\0';
 
-    if (strcmp(clients[client_index].name, target_pseudo) == 0) {
+    if (strcmp(clients[client_index].name, target_pseudo) == 0)
+    {
         write_client(clients[client_index].sock, "You cannot add yourself as a friend.\n");
         return;
     }
 
-    if (clients[client_index].has_pending_request) {
+    if (clients[client_index].has_pending_request)
+    {
         write_client(clients[client_index].sock, "You have a pending friend request. Please respond to it first.\n");
         return;
     }
 
-    for (int j = 0; j < clients[client_index].nbFriend; j++) {
-        if (strcmp(clients[client_index].friend[j], target_pseudo) == 0) {
+    for (int j = 0; j < clients[client_index].nbFriend; j++)
+    {
+        if (strcmp(clients[client_index].friend[j], target_pseudo) == 0)
+        {
             write_client(clients[client_index].sock, "This player is already your friend.\n");
             return;
         }
     }
 
-    for (int i = 0; i < actual; i++) {
-        if (strcmp(clients[i].name, target_pseudo) == 0) {
-            if (is_blocked_by(clients, actual, clients[client_index].name, target_pseudo)) {
+    for (int i = 0; i < actual; i++)
+    {
+        if (strcmp(clients[i].name, target_pseudo) == 0)
+        {
+            if (is_blocked_by(clients, actual, clients[client_index].name, target_pseudo))
+            {
                 write_client(clients[client_index].sock, "Cannot send friend request - you are blocked by this user.\n");
                 return;
             }
 
-            if (clients[i].has_pending_request) {
+            if (clients[i].has_pending_request)
+            {
                 write_client(clients[client_index].sock, "This player already has a pending friend request.\n");
                 return;
             }
@@ -912,46 +939,55 @@ void handle_friend(Client *clients, int actual, int client_index, const char *bu
 }
 
 // Function to handle a friend request response
-void handle_friend_response(Client *clients, int actual, int client_index, const char *response) {
-    if (!clients[client_index].has_pending_request) {
+void handle_friend_response(Client *clients, int actual, int client_index, const char *response)
+{
+    if (!clients[client_index].has_pending_request)
+    {
         write_client(clients[client_index].sock, "You have no pending friend requests.\n");
         return;
     }
 
     char *bool_response = strtok((char *)response, ":");
-    if (!bool_response) {
+    if (!bool_response)
+    {
         write_client(clients[client_index].sock, "Invalid response format.\n");
         return;
     }
 
     // Find requesting client
     int asker_index = -1;
-    for (int i = 0; i < actual; i++) {
-        if (strcmp(clients[i].name, clients[client_index].pending_from) == 0) {
+    for (int i = 0; i < actual; i++)
+    {
+        if (strcmp(clients[i].name, clients[client_index].pending_from) == 0)
+        {
             asker_index = i;
             break;
         }
     }
 
-    if (asker_index == -1) {
+    if (asker_index == -1)
+    {
         write_client(clients[client_index].sock, "Requesting user not found.\n");
         clients[client_index].has_pending_request = false;
         return;
     }
 
-    if (strcmp(bool_response, "yes") == 0) {
+    if (strcmp(bool_response, "yes") == 0)
+    {
         // Add each other as friends
-        strncpy(clients[asker_index].friend[clients[asker_index].nbFriend], 
+        strncpy(clients[asker_index].friend[clients[asker_index].nbFriend],
                 clients[client_index].name, PSEUDO_MAX_LENGTH - 1);
         clients[asker_index].nbFriend++;
 
-        strncpy(clients[client_index].friend[clients[client_index].nbFriend], 
+        strncpy(clients[client_index].friend[clients[client_index].nbFriend],
                 clients[asker_index].name, PSEUDO_MAX_LENGTH - 1);
         clients[client_index].nbFriend++;
 
         write_client(clients[asker_index].sock, "Friend added successfully.\n");
         write_client(clients[client_index].sock, "Friend added successfully.\n");
-    } else {
+    }
+    else
+    {
         write_client(clients[asker_index].sock, "Friend request declined.\n");
         write_client(clients[client_index].sock, "Friend request declined.\n");
     }

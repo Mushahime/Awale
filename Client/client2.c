@@ -5,7 +5,7 @@
 
 // Global
 char pseudo[PSEUDO_MAX_LENGTH];
-char save[MAX_PARTIES][BUF_SAVE_SIZE+BUF_SIZE];
+char save[MAX_PARTIES][BUF_SAVE_SIZE + BUF_SIZE];
 int save_count = 0;
 int save_index = 0;
 bool partie_en_cours = false;
@@ -23,13 +23,15 @@ int main(int argc, char **argv)
 
     if (strlen(argv[3]) < PSEUDO_MIN_LENGTH || strlen(argv[3]) >= PSEUDO_MAX_LENGTH)
     {
-        printf("Error: Pseudo must be between %d and %d characters\n", 
+        printf("Error: Pseudo must be between %d and %d characters\n",
                PSEUDO_MIN_LENGTH, PSEUDO_MAX_LENGTH - 1);
         return EXIT_FAILURE;
     }
 
-    for (size_t i = 0; i < strlen(argv[3]); i++) {
-        if (!isalnum(argv[3][i]) && argv[3][i] != '_') {
+    for (size_t i = 0; i < strlen(argv[3]); i++)
+    {
+        if (!isalnum(argv[3][i]) && argv[3][i] != '_')
+        {
             printf("Error: Pseudo must contain only letters, numbers and underscore\n");
             return EXIT_FAILURE;
         }
@@ -176,7 +178,7 @@ void handle_server_message(SOCKET sock, char *buffer)
     {
         process_challenge_message(buffer);
     }
-    // for awale move 
+    // for awale move
     else if (strncmp(buffer, "AWALE:", 6) == 0)
     {
         waiting_for_response = false;
@@ -209,7 +211,7 @@ void handle_server_message(SOCKET sock, char *buffer)
             partie_en_cours = false;
             should_display_menu = !partie_en_cours;
         }
-        
+
         printf("\n");
     }
     // for friends list
@@ -233,7 +235,7 @@ void handle_server_message(SOCKET sock, char *buffer)
         partie_en_cours = false;
         should_display_menu = true;
 
-        if(strstr(buffer, "score") != NULL)
+        if (strstr(buffer, "score") != NULL)
         {
             saver(sock, buffer);
         }
@@ -246,7 +248,7 @@ void handle_server_message(SOCKET sock, char *buffer)
         should_display_menu = true;
     }
     // for spectator when he is accepted in a game
-    else if (strstr(buffer, "spectating")!=NULL)
+    else if (strstr(buffer, "spectating") != NULL)
     {
         partie_en_cours = true;
         printf("\033[1;32m%s\033[0m\n", buffer);
@@ -286,7 +288,6 @@ void handle_user_input(SOCKET sock)
     char input[BUF_SIZE];
     int choice;
 
-
     if (fgets(input, sizeof(input), stdin) == NULL)
         return;
 
@@ -298,13 +299,12 @@ void handle_user_input(SOCKET sock)
             handle_quit_game(sock);
             return;
         }
-        else
-        if (strncmp(input, "mp:", 3) == 0)
+        else if (strncmp(input, "mp:", 3) == 0)
         {
             input[strcspn(input, "\n")] = '\0';
             write_server(sock, input);
         }
-        else if (strncmp(input, "\n", 1) != 0) 
+        else if (strncmp(input, "\n", 1) != 0)
         {
             printf("During a game, you can only send private messages using 'mp:pseudo:message' or 'quit'\n");
         }
@@ -313,7 +313,7 @@ void handle_user_input(SOCKET sock)
 
     if (waiting_for_response)
     {
-        //printf("\033[1;31mYou are waiting for a response. Please wait.\033[0m\n");
+        // printf("\033[1;31mYou are waiting for a response. Please wait.\033[0m\n");
         return;
     }
     choice = atoi(input);
@@ -418,7 +418,7 @@ void clear_screen_custom()
 #else
     system("clear");
 #endif
-display_menu();
+    display_menu();
 }
 
 void clear_screen_custom2()
@@ -443,13 +443,16 @@ void app(const char *address, int port)
     fd_set rdfs;
 
     write_server(sock, pseudo);
-    
+
     // wait for the server response
     if (read_server(sock, buffer) == -1 || strcmp(buffer, "connected") != 0)
     {
-        if (strcmp(buffer, "pseudo_exists") == 0) {
+        if (strcmp(buffer, "pseudo_exists") == 0)
+        {
             printf("\033[1;31mThis nickname is already taken.\033[0m\n");
-        } else {
+        }
+        else
+        {
             printf("\033[1;31mConnection failed. Invalid nickname or server error.\033[0m\n");
         }
         close(sock);

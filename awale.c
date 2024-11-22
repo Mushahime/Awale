@@ -79,7 +79,7 @@ bool jouer_coup(JeuAwale *jeu, int joueur, int case_depart)
         }
     }
 
-    // Check if the move starves the opponent or starves us   
+    // Check if the move starves the opponent or starves us
     bool famine_adversaire = true;
     bool famine_joueur = true;
     if (joueur == 1)
@@ -121,7 +121,7 @@ bool jouer_coup(JeuAwale *jeu, int joueur, int case_depart)
         }
     }
 
-    //if the move starve the opponent, the move is invalid (we restore the initial state)
+    // if the move starve the opponent, the move is invalid (we restore the initial state)
     if (famine_adversaire)
     {
         for (int i = 0; i < TAILLE_PLATEAU; i++)
@@ -133,7 +133,7 @@ bool jouer_coup(JeuAwale *jeu, int joueur, int case_depart)
         printf("Invalid play, need to feed your oppenent.\n");
         return false;
     }
-    //if the move starve the player, we end the game and add the remaining seeds to the opponent's score
+    // if the move starve the player, we end the game and add the remaining seeds to the opponent's score
     if (famine_joueur)
     {
         for (int i = 0; i < TAILLE_PLATEAU; i++)
