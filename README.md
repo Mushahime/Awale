@@ -127,8 +127,8 @@ Follow the following switch case :
 3. **Good Managagement of exit ctrl c**
 4. **Reutilisabity of the code**
 5. **Error Management**
-6. **Elo ranking system**
-7. **Persistance of player is't done but a part of the code was started (by changing connection, app and remove_client it can be done) -> no time to do it**
+6. **Persistance is done for bio, point, friend and blocked people**
+7. **Elo ranking system**
 
 N.B : Some actions block messages of the server while not not done but these actions are atomic and not problematic (public messsage, ...).
 

@@ -16,6 +16,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <stdbool.h>
+#include <errno.h>
 #include <stdio.h>
 
 // Constants

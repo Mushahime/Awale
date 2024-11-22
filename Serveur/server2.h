@@ -15,6 +15,7 @@
 #include <pthread.h>
 #include "utilsServer.h"
 #include "../awale.h"
+#include "persistance.h"
 #include "commands.h"
 #define INVALID_SOCKET -1
 #define SOCKET_ERROR -1
@@ -22,10 +23,16 @@
 #define INVALID_MOVE_FAMINE "The selected case would cause famine for your opponent"
 #define INVALID_MOVE_EMPTY "The selected case is empty"
 
+// Typedefs
 typedef int SOCKET;
 typedef struct sockaddr_in SOCKADDR_IN;
 typedef struct sockaddr SOCKADDR;
 typedef struct in_addr IN_ADDR;
+
+// Global variables
+static Client *g_clients = NULL;
+static int *g_actual = NULL;
+
 void app(int port);
 #else
 #error not defined for this platform

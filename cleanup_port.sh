@@ -12,13 +12,18 @@ print_message() {
     echo -e "${color}${message}${NC}"
 }
 
-# Function to kill processes by port
+# Function to kill processes using a specific port
 kill_port_processes() {
     local port=$1
     local pids=$(lsof -ti :$port 2>/dev/null)
     
     if [ ! -z "$pids" ]; then
         print_message "$RED" "Killing processes on port $port: $pids"
+        # Envoyer SIGTERM au lieu de SIGKILL pour permettre la sauvegarde
+        kill $pids 2>/dev/null
+        # Attendre un peu pour la sauvegarde
+        sleep 1
+        # Si le processus existe toujours, forcer l'arrêt
         kill -9 $pids 2>/dev/null
         return 0
     fi

@@ -1,6 +1,7 @@
 #include "utilsClient.h"
 #include <string.h>
 #include <string.h>
+#include <fcntl.h>
 
 // Function to initialize the program
 void init(void)
@@ -25,21 +26,16 @@ void end(void)
 }
 
 // Function to initialize the connection
-int init_connection(const char *address, int port)
-{
+int init_connection(const char *address, int port) {
     SOCKET sock = socket(AF_INET, SOCK_STREAM, 0);
-    SOCKADDR_IN sin = {0};
-    struct hostent *hostinfo;
-
-    if (sock == INVALID_SOCKET)
-    {
+    if (sock == INVALID_SOCKET) {
         perror("socket()");
         exit(errno);
     }
 
-    hostinfo = gethostbyname(address);
-    if (hostinfo == NULL)
-    {
+    SOCKADDR_IN sin = {0};
+    struct hostent *hostinfo = gethostbyname(address);
+    if (hostinfo == NULL) {
         fprintf(stderr, "Unknown host %s.\n", address);
         exit(EXIT_FAILURE);
     }
@@ -48,11 +44,20 @@ int init_connection(const char *address, int port)
     sin.sin_port = htons(port);
     sin.sin_family = AF_INET;
 
-    if (connect(sock, (SOCKADDR *)&sin, sizeof(SOCKADDR)) == SOCKET_ERROR)
-    {
+    if (connect(sock, (SOCKADDR *)&sin, sizeof(SOCKADDR)) == SOCKET_ERROR) {
         perror("connect()");
+        closesocket(sock);
         exit(errno);
     }
+
+    // Set socket as non-blocking
+    #ifdef WIN32
+        unsigned long mode = 1;
+        ioctlsocket(sock, FIONBIO, &mode);
+    #else
+        int flags = fcntl(sock, F_GETFL, 0);
+        fcntl(sock, F_SETFL, flags | O_NONBLOCK);
+    #endif
 
     return sock;
 }
@@ -66,12 +71,14 @@ void end_connection(int sock)
 // Function to read from a server
 int read_server(SOCKET sock, char *buffer)
 {
-    int n = 0;
-
-    if ((n = recv(sock, buffer, BUF_SIZE - 1, 0)) < 0)
-    {
+    int n;
+    while ((n = recv(sock, buffer, BUF_SIZE - 1, 0)) < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) {
+            usleep(100000);  // 100ms
+            continue;
+        }
         perror("recv()");
-        exit(errno);
+        return -1;
     }
 
     buffer[n] = 0;
